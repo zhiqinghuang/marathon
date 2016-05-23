@@ -102,11 +102,11 @@ class HealthCheckActor(
 
     // ignore failures if maxFailures == 0
     if (consecutiveFailures >= maxFailures && maxFailures > 0) {
-      log.info(f"Detected unhealthy task ${task.getId} of app [$app.id] version [$app.version] on host ${task.getHost}")
+      log.warning(f"Detected unhealthy task ${task.getId} of [$app.id] version [$app.version] on host ${task.getHost}")
 
       // kill the task
       marathonSchedulerDriverHolder.driver.foreach { driver =>
-        log.info(s"Send kill request for task ${task.getId} on host ${task.getHost} to driver")
+        log.warning(s"Send kill request for task ${task.getId} on host ${task.getHost} to driver")
         driver.killTask(TaskID(task.getId))
       }
     }

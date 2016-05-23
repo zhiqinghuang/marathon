@@ -53,6 +53,7 @@ trait StoppingBehavior extends Actor with ActorLogging {
       val trackerIds = taskTracker.appTasksSync(appId).map(_.getId).toSet
       idsToKill = idsToKill.filter(trackerIds)
 
+      log.warning("Killing tasks {}", idsToKill)
       idsToKill.foreach { id =>
         driver.killTask(
           Protos.TaskID

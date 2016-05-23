@@ -21,7 +21,7 @@ class TaskKillActor(
   var idsToKill = tasksToKill.map(_.getId).to[mutable.Set]
 
   def initializeStop(): Unit = {
-    log.info(s"Killing ${tasksToKill.size} instances")
+    log.warning("Killing tasks {}", tasksToKill.map(_.getId))
     for (task <- tasksToKill) {
       driver.killTask(taskId(task.getId))
     }

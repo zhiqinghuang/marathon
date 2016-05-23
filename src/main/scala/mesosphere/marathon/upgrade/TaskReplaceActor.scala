@@ -131,9 +131,9 @@ class TaskReplaceActor(
 
       maybeNewTaskId match {
         case Some(newTaskId: String) =>
-          log.info(s"Killing old task $nextOldTask because $newTaskId became reachable")
+          log.warning(s"Killing old task $nextOldTask because $newTaskId became reachable")
         case _ =>
-          log.info(s"Killing old task $nextOldTask")
+          log.warning(s"Killing old task $nextOldTask")
       }
 
       outstandingKills += nextOldTask

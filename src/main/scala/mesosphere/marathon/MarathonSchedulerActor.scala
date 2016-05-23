@@ -434,7 +434,7 @@ class SchedulerActions(
     val tasks = taskTracker.appTasksSync(app.id)
 
     for (task <- tasks) {
-      log.info(s"Killing task ${task.getId}")
+      log.warn(s"Killing task ${task.getId}")
       driver.killTask(protos.TaskID(task.getId))
     }
     taskQueue.purge(app.id)
@@ -476,7 +476,7 @@ class SchedulerActions(
               "The app was likely terminated. Will now expunge."
           )
           for (orphanTask <- tasksByApp.appTasks(unknownAppId)) {
-            log.info(s"Killing task ${orphanTask.getId}")
+            log.warn(s"Killing task ${orphanTask.getId}")
             driver.killTask(protos.TaskID(orphanTask.getId))
           }
         }
@@ -554,7 +554,7 @@ class SchedulerActions(
         .filter(t => runningOrStaged.get(t.getStatus.getState).nonEmpty)
         .sortWith(sortByStateAndTime)
         .take(currentCount - targetCount)
-      log.info(s"Killing tasks: ${toKill.map(_.getId)}")
+      log.warn(s"Killing tasks: ${toKill.map(_.getId)}")
       for (task <- toKill) {
         driver.killTask(protos.TaskID(task.getId))
       }

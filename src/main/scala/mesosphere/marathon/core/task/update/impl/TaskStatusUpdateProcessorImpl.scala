@@ -67,7 +67,8 @@ class TaskStatusUpdateProcessorImpl @Inject() (
             if (status.getState != TaskState.TASK_LOST) {
               // If we kill an unknown task, we will get another TASK_LOST notification which leads to an endless
               // stream of kills and TASK_LOST updates.
-              log.warn("Killing unknown task ", taskId)
+              log.warn("Killing unknown task %s in reaction to status update: %s (%s)"
+                .format(status.getTaskId.getValue, status.getState, status.getReason))
               killTask(taskId)
             }
           }
