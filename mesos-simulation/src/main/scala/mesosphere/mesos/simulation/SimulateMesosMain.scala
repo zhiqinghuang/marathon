@@ -3,11 +3,12 @@ package mesosphere.mesos.simulation
 import com.google.inject._
 import com.google.inject.util.Modules
 import mesosphere.marathon._
+import scala.collection.immutable.Seq
 
 /**
   * Start marathon with a simulated mesos driver.
   */
-object SimulateMesosMain extends MarathonApp {
+class MarathonWithSimulatedMesos(args: Seq[String]) extends MarathonApp(args) {
   private[this] def simulatedDriverModule: Module = {
     new AbstractModule {
       override def configure(): Unit = {
@@ -16,9 +17,14 @@ object SimulateMesosMain extends MarathonApp {
     }
   }
 
-  override def modules(): Seq[Module] = {
-    Seq(Modules.`override`(super.modules(): _*).`with`(simulatedDriverModule))
+  override val modules: Seq[Module] = {
+    Seq(Modules.`override`(super.modules: _*).`with`(simulatedDriverModule))
   }
+}
 
-  runDefault()
+object SimulateMesosMain {
+  def main(args: Array[String]): Unit = {
+    val main = new MarathonWithSimulatedMesos(args.toVector)
+    main.start()
+  }
 }

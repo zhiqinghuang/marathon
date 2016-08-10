@@ -1,18 +1,26 @@
 package mesosphere.marathon
 
-import com.google.inject.Module
-import mesosphere.chaos.App
+import com.google.common.util.concurrent.ServiceManager
+import com.google.inject.{ Guice, Module }
 import mesosphere.chaos.http.{ HttpModule, HttpService }
 import mesosphere.chaos.metrics.MetricsModule
 import mesosphere.marathon.api.MarathonRestModule
 import mesosphere.marathon.core.CoreGuiceModule
 import mesosphere.marathon.metrics.{ MetricsReporterModule, MetricsReporterService }
 import org.slf4j.LoggerFactory
+import org.slf4j.bridge.SLF4JBridgeHandler
 
-class MarathonApp extends App {
-  val log = LoggerFactory.getLogger(getClass.getName)
+import scala.collection.JavaConverters._
+import scala.collection.immutable.Seq
 
-  def modules(): Seq[Module] = {
+class MarathonApp(args: Seq[String]) extends AutoCloseable {
+  SLF4JBridgeHandler.removeHandlersForRootLogger()
+  SLF4JBridgeHandler.install()
+
+  private var running = false
+  private val log = LoggerFactory.getLogger(getClass.getName)
+  val conf = new AllConf(args)
+  protected val modules: Seq[Module] = {
     Seq(
       new HttpModule(conf),
       new MetricsModule,
@@ -23,22 +31,55 @@ class MarathonApp extends App {
       new CoreGuiceModule
     )
   }
+  private var serviceManager: Option[ServiceManager] = None
 
-  override val conf = new AllConf(args)
-
-  def runDefault(): Unit = {
+  def start(): Unit = if (!running) {
+    running = true
     setConcurrentContextDefaults()
 
     log.info(s"Starting Marathon ${BuildInfo.version}/${BuildInfo.buildref} with ${args.mkString(" ")}")
 
     AllConf.config = Some(conf)
 
-    run(
+    val injector = Guice.createInjector(modules.asJava)
+    val services = Seq(
       classOf[HttpService],
       classOf[MarathonSchedulerService],
-      classOf[MetricsReporterService]
-    )
+      classOf[MetricsReporterService]).map(injector.getInstance(_))
+    val serviceManager = new ServiceManager(services.asJava)
+    this.serviceManager = Some(serviceManager)
+
+    sys.addShutdownHook(shutdownAndWait())
+
+    serviceManager.startAsync()
+
+    try {
+      serviceManager.awaitHealthy()
+    } catch {
+      case e: Exception =>
+        log.error(s"Failed to start all services. Services by state: ${serviceManager.servicesByState()}", e)
+        shutdownAndWait()
+        throw e
+    }
+
+    log.info("All services up and running.")
   }
+
+  def shutdown(): Unit = if (running) {
+    running = false
+    log.info("Shutting down services")
+    serviceManager.foreach(_.stopAsync())
+  }
+
+  def shutdownAndWait(): Unit = {
+    serviceManager.foreach { serviceManager =>
+      shutdown()
+      log.info("Waiting for services to shut down")
+      serviceManager.awaitStopped()
+    }
+  }
+
+  override def close(): Unit = shutdownAndWait()
 
   /**
     * Make sure that we have more than one thread -- otherwise some unmarked blocking operations might cause trouble.
@@ -85,6 +126,9 @@ class MarathonApp extends App {
   }
 }
 
-object Main extends MarathonApp {
-  runDefault()
+object Main {
+  def main(args: Array[String]): Unit = {
+    val app = new MarathonApp(args.toVector)
+    app.start()
+  }
 }

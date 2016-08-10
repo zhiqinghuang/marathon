@@ -270,6 +270,7 @@ object Dependencies {
     akkaSlf4j % "compile",
     akkaStream % "compile",
     akkaHttp % "compile",
+    akkaHttpJson % "compile",
     asyncAwait % "compile",
     sprayClient % "compile",
     sprayHttpx % "compile",
@@ -360,6 +361,7 @@ object Dependency {
   val akkaSlf4j = "com.typesafe.akka" %% "akka-slf4j" % V.Akka
   val akkaStream = "com.typesafe.akka" %% "akka-stream" % V.Akka
   val akkaHttp = "com.typesafe.akka" %% "akka-http-experimental" % V.Akka
+  val akkaHttpJson = "com.typesafe.akka" %% "akka-http-spray-json-experimental" % V.Akka
   val asyncAwait = "org.scala-lang.modules" %% "scala-async" % V.AsyncAwait
   val sprayClient = "io.spray" %% "spray-client" % V.Spray
   val sprayHttpx = "io.spray" %% "spray-httpx" % V.Spray
