@@ -2,15 +2,17 @@ package mesosphere.marathon.integration
 
 import java.util.UUID
 
+import com.typesafe.scalalogging.StrictLogging
 import mesosphere.marathon.Protos
 import mesosphere.marathon.Protos.Constraint.Operator
 import mesosphere.marathon.Protos.HealthCheckDefinition.Protocol
 import mesosphere.marathon.api.v2.json.AppUpdate
 import mesosphere.marathon.core.health.HealthCheck
-import mesosphere.marathon.integration.facades.{ ITEnrichedTask, ITDeployment, ITQueueItem, MarathonFacade }
-import MarathonFacade._
+import mesosphere.marathon.integration.facades.MarathonFacade._
+import mesosphere.marathon.integration.facades.{ ITEnrichedTask, ITQueueItem }
 import mesosphere.marathon.integration.setup._
 import mesosphere.marathon.state._
+import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{ BeforeAndAfter, GivenWhenThen, Matchers }
 import org.slf4j.LoggerFactory
 
@@ -19,10 +21,11 @@ import scala.util.control.NonFatal
 
 class AppDeployIntegrationTest
     extends IntegrationFunSuite
-    with SingleMarathonIntegrationTest
+    with EmbeddedMarathonTest
     with Matchers
     with BeforeAndAfter
-    with GivenWhenThen {
+    with GivenWhenThen
+    with ScalaFutures with StrictLogging {
 
   private[this] val log = LoggerFactory.getLogger(getClass)
 
@@ -162,8 +165,8 @@ class AppDeployIntegrationTest
     appCount should be (1)
   }
 
-  test("create a simple app without health checks via secondary (proxying)") {
-    if (!config.useExternalSetup) {
+  /*test("create a simple app without health checks via secondary (proxying)") {
+    //if (!config.useExternalSetup) {
       Given("a new app")
       val app = appProxy(testBasePath / "app", "v1", instances = 1, withHealth = false)
 
@@ -175,8 +178,8 @@ class AppDeployIntegrationTest
       extractDeploymentIds(result) should have size 1
       waitForEvent("deployment_success")
       waitForTasks(app.id, 1) //make sure, the app has really started
-    }
-  }
+    //}
+  }*/
 
   test("create a simple app with http health checks") {
     Given("a new app")
@@ -478,7 +481,7 @@ class AppDeployIntegrationTest
     marathon.listAppsInBaseGroup.value should have size 0
   }
 
-  test("create and deploy an app with two tasks") {
+  /*test("create and deploy an app with two tasks") {
     Given("a new app")
     log.info("new app")
     val appIdPath: PathId = testBasePath / "/test/app"
@@ -532,6 +535,7 @@ class AppDeployIntegrationTest
     pingTask(taskUpdate1).entityString should be(s"Pong $appId\n")
     pingTask(taskUpdate2).entityString should be(s"Pong $appId\n")
   }
+  */
 
   test("stop (forcefully delete) a deployment") {
     Given("a new app with constraints that cannot be fulfilled")

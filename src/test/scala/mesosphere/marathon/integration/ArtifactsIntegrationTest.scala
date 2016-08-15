@@ -3,18 +3,22 @@ package mesosphere.marathon.integration
 import java.io.File
 
 import com.google.common.io.Files
-
+import com.typesafe.scalalogging.StrictLogging
 import mesosphere.marathon.integration.setup._
-import org.scalatest.{ ConfigMap, GivenWhenThen, Matchers }
+import org.scalatest.concurrent.ScalaFutures
+import org.scalatest.{ GivenWhenThen, Matchers }
 
-class ArtifactsIntegrationTest extends IntegrationFunSuite with SingleMarathonIntegrationTest with GivenWhenThen with Matchers {
+class ArtifactsIntegrationTest extends IntegrationFunSuite
+    with EmbeddedMarathonTest with GivenWhenThen with Matchers
+    with ScalaFutures with StrictLogging {
+
   var artifactsDir: File = Files.createTempDir()
 
-  override def extraMarathonParameters = List("--artifact_store", s"file://${artifactsDir.toString}")
+  override val marathonArgs = Map("artifact_store" -> s"file://${artifactsDir.toString}")
 
-  override protected def afterAll(configMap: ConfigMap): Unit = {
-    super.afterAll(configMap)
+  override def afterAll(): Unit = {
     artifactsDir.delete()
+    super.afterAll()
   }
 
   test("upload and fetch an artifact") {

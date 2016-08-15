@@ -1,7 +1,7 @@
 package mesosphere.marathon.core.task.tracker.impl
 
 import akka.actor.{ Actor, ActorRef, Props, Terminated }
-import akka.testkit.{ TestActorRef, TestProbe }
+import akka.testkit.{ TestActorRef, TestKitBase, TestProbe }
 import com.codahale.metrics.MetricRegistry
 import mesosphere.marathon.MarathonTestHelper
 import mesosphere.marathon.core.task.{ Task, TaskStateChange }
@@ -19,7 +19,7 @@ import scala.concurrent.{ ExecutionContext, Future }
   * Most of the functionality is tested at a higher level in [[mesosphere.marathon.tasks.TaskTrackerImplTest]].
   */
 class TaskTrackerActorTest
-    extends MarathonActorSupport with FunSuiteLike with GivenWhenThen with Mockito with Matchers {
+    extends MarathonActorSupport with FunSuiteLike with GivenWhenThen with Mockito with Matchers with TestKitBase {
 
   test("failures while loading the initial data are escalated") {
     val f = new Fixture

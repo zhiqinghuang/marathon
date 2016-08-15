@@ -22,7 +22,7 @@ class HealthCheckActorTest
     extends MarathonActorSupport
     with MarathonSpec with Matchers with BeforeAndAfterAll {
 
-  override lazy implicit val system: ActorSystem =
+  override implicit lazy val system: ActorSystem =
     ActorSystem(
       name = "system",
       defaultExecutionContext = Some(CallerThreadExecutionContext.callerThreadExecutionContext)

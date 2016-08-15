@@ -3,7 +3,7 @@ package mesosphere.marathon.core.health.impl
 import java.net.{ InetAddress, ServerSocket }
 
 import akka.actor.Props
-import akka.testkit.{ ImplicitSender, TestActorRef }
+import akka.testkit.{ ImplicitSender, TestActorRef, TestKitBase }
 import mesosphere.marathon.Protos.HealthCheckDefinition.Protocol
 import mesosphere.marathon.core.health.{ HealthCheck, HealthResult, Healthy }
 import mesosphere.marathon.state.AppDefinition
@@ -20,7 +20,8 @@ class HealthCheckWorkerActorTest
     extends MarathonActorSupport
     with ImplicitSender
     with MarathonSpec
-    with Matchers {
+    with Matchers
+    with TestKitBase {
 
   import HealthCheckWorker._
   import MarathonTestHelper.Implicits._

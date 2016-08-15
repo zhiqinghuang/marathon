@@ -3,7 +3,7 @@ package mesosphere.marathon
 import java.util.{ Timer, TimerTask }
 
 import akka.actor.ActorRef
-import akka.testkit.TestProbe
+import akka.testkit.{ TestKitBase, TestProbe }
 import com.codahale.metrics.MetricRegistry
 import mesosphere.chaos.http.HttpConf
 import mesosphere.marathon.Protos.StorageVersion
@@ -68,7 +68,8 @@ class MarathonSchedulerServiceTest
     with MarathonSpec
     with BeforeAndAfterAll
     with Matchers
-    with ScalaFutures {
+    with ScalaFutures
+    with TestKitBase {
   import MarathonSchedulerServiceTest._
 
   import scala.concurrent.ExecutionContext.Implicits.global

@@ -38,6 +38,7 @@ class MarathonSchedulerActorTest extends MarathonActorSupport
     with GivenWhenThen
     with Matchers
     with BeforeAndAfterAll
+    with TestKitBase
     with ImplicitSender {
 
   test("RecoversDeploymentsAndReconcilesHealthChecksOnStart") {

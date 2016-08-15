@@ -1,14 +1,17 @@
 package mesosphere.marathon.integration
 
-import mesosphere.marathon.integration.setup.{ IntegrationFunSuite, SingleMarathonIntegrationTest }
+import com.typesafe.scalalogging.StrictLogging
+import mesosphere.marathon.integration.setup.{ EmbeddedMarathonTest, IntegrationFunSuite }
 import org.scalatest._
+import org.scalatest.concurrent.ScalaFutures
 
 class EventSubscribersIntegrationTest
     extends IntegrationFunSuite
-    with SingleMarathonIntegrationTest
+    with EmbeddedMarathonTest
     with Matchers
     with BeforeAndAfter
-    with GivenWhenThen {
+    with GivenWhenThen
+    with ScalaFutures with StrictLogging {
 
   before(cleanUp())
 

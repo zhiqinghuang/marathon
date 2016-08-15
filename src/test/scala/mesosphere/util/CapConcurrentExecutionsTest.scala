@@ -1,6 +1,7 @@
 package mesosphere.util
 
 import akka.actor.Terminated
+import akka.testkit.TestKitBase
 import com.codahale.metrics.MetricRegistry
 import mesosphere.marathon.MarathonSpec
 import mesosphere.marathon.integration.setup.WaitTestSupport
@@ -13,7 +14,7 @@ import scala.concurrent.duration._
 import scala.concurrent.{ Future, Promise }
 
 class CapConcurrentExecutionsTest extends MarathonActorSupport with MarathonSpec with Matchers with GivenWhenThen
-    with ScalaFutures {
+    with ScalaFutures with TestKitBase {
   def capMetrics: CapConcurrentExecutionsMetrics = new CapConcurrentExecutionsMetrics(
     new Metrics(new MetricRegistry),
     classOf[CapConcurrentExecutionsTest]

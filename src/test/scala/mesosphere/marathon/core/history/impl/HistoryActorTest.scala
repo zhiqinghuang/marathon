@@ -1,7 +1,7 @@
 package mesosphere.marathon.core.history.impl
 
 import akka.actor.{ ActorRef, Props }
-import akka.testkit.{ ImplicitSender, TestActorRef }
+import akka.testkit.{ ImplicitSender, TestActorRef, TestKitBase }
 import mesosphere.marathon.MarathonSpec
 import mesosphere.marathon.core.event.{ MesosStatusUpdateEvent, UnhealthyTaskKillEvent }
 import mesosphere.marathon.core.task.Task
@@ -23,7 +23,8 @@ class HistoryActorTest
     with MockitoSugar
     with BeforeAndAfterAll
     with Matchers
-    with ImplicitSender {
+    with ImplicitSender
+    with TestKitBase {
   import org.apache.mesos.Protos.TaskState._
 
   var historyActor: ActorRef = _

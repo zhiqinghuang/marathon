@@ -1,20 +1,24 @@
 package mesosphere.marathon.integration
 
+import com.typesafe.scalalogging.StrictLogging
 import mesosphere.marathon.api.v2.json.GroupUpdate
-import mesosphere.marathon.integration.setup.{ IntegrationFunSuite, IntegrationHealthCheck, SingleMarathonIntegrationTest, WaitTestSupport }
+import mesosphere.marathon.integration.setup.{ EmbeddedMarathonTest, IntegrationFunSuite, IntegrationHealthCheck, WaitTestSupport }
 import mesosphere.marathon.state.{ AppDefinition, PathId, UpgradeStrategy }
 import org.apache.http.HttpStatus
 import org.scalatest._
+import org.scalatest.concurrent.ScalaFutures
 import spray.http.DateTime
 
 import scala.concurrent.duration._
 
 class GroupDeployIntegrationTest
     extends IntegrationFunSuite
-    with SingleMarathonIntegrationTest
+    with EmbeddedMarathonTest
     with Matchers
     with BeforeAndAfter
-    with GivenWhenThen {
+    with GivenWhenThen
+    with ScalaFutures
+    with StrictLogging {
 
   //clean up state before running the test case
   before(cleanUp())

@@ -58,10 +58,11 @@ private class DeploymentActor(
       currentStep = Some(step)
       deploymentManager ! DeploymentStepInfo(plan, currentStep.getOrElse(DeploymentStep(Nil)), currentStepNr)
 
-      performStep(step) onComplete {
+      performStep(step).onComplete {
         case Success(_) => self ! NextStep
         case Failure(t) =>
-          log.debug("Performing {} failed: {}", step, t)
+          // Somehow, log _can_ be null
+          Option(log).foreach(_.debug("Performing {} failed: {}", step, t))
           self ! Fail(t)
       }
 

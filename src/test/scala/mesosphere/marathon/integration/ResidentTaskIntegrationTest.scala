@@ -1,13 +1,15 @@
 package mesosphere.marathon.integration
 
+import com.typesafe.scalalogging.StrictLogging
 import mesosphere.marathon.Protos
 import mesosphere.marathon.api.v2.json.AppUpdate
 import mesosphere.marathon.integration.facades.ITEnrichedTask
 import mesosphere.marathon.integration.facades.MarathonFacade._
 import mesosphere.marathon.integration.facades.MesosFacade.{ ITMesosState, ITResources }
-import mesosphere.marathon.integration.setup.{ IntegrationFunSuite, RestResult, SingleMarathonIntegrationTest }
+import mesosphere.marathon.integration.setup.{ EmbeddedMarathonTest, IntegrationFunSuite, RestResult }
 import mesosphere.marathon.state._
 import org.apache.mesos.{ Protos => Mesos }
+import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{ BeforeAndAfter, GivenWhenThen, Matchers, Tag }
 import org.slf4j.LoggerFactory
 
@@ -17,10 +19,12 @@ import scala.util.Try
 
 class ResidentTaskIntegrationTest
     extends IntegrationFunSuite
-    with SingleMarathonIntegrationTest
+    with EmbeddedMarathonTest
     with Matchers
     with BeforeAndAfter
-    with GivenWhenThen {
+    with GivenWhenThen
+    with ScalaFutures
+    with StrictLogging {
 
   import Fixture._
 

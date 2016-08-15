@@ -1,29 +1,28 @@
 package mesosphere.marathon.integration
 
-import java.io.File
-
+import com.typesafe.scalalogging.StrictLogging
 import mesosphere.marathon.integration.setup._
-import org.scalatest.{ BeforeAndAfter, GivenWhenThen, Matchers }
+import org.scalatest.GivenWhenThen
+import org.scalatest.concurrent.ScalaFutures
 
 class MarathonStartupIntegrationTest extends IntegrationFunSuite
-    with SingleMarathonIntegrationTest
-    with Matchers
-    with BeforeAndAfter
-    with GivenWhenThen {
+    with EmbeddedMarathonTest
+    with GivenWhenThen
+    with ScalaFutures
+    with StrictLogging {
+
   test("Marathon should fail during start, if the HTTP port is already bound") {
-    Given(s"a Marathon process already running on port ${config.marathonBasePort}")
+    Given(s"a Marathon process already running on port ${marathonServer.httpPort}")
 
     When("starting another Marathon process using an HTTP port that is already bound")
-    val cwd = new File(".")
-    val failingProcess = ProcessKeeper.startMarathon(
-      cwd,
-      env,
-      List("--http_port", config.marathonBasePort.toString, "--zk", config.zk, "--master", config.master),
-      startupLine = "Failed to start all services.",
-      processName = "marathonFail"
-    )
 
-    Then("the new process should fail and exit with an error code")
-    assert(failingProcess.exitValue() > 0)
+    val conflict = LocalMarathon(false, marathonServer.masterUrl, marathonServer.zkUrl,
+      conf = Map("http_port" -> marathonServer.httpPort.toString))
+
+    Then("An uncaught exception should be thrown")
+    intercept[Throwable] {
+      conflict.marathon.start()
+    }
+    conflict.close()
   }
 }

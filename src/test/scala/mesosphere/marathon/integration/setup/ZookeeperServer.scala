@@ -47,7 +47,7 @@ class ZookeeperServer(
     override def run(): Unit = {
       while (!closing) {
         zk.runFromConfig(config)
-        semaphore.acquire()
+        Try(semaphore.acquire())
       }
     }
   }, s"Zookeeper-$port")
@@ -117,8 +117,8 @@ trait ZookeeperServerTest extends BeforeAndAfterAll { this: Suite with ScalaFutu
   }
 
   abstract override def beforeAll(): Unit = {
-    zkServer.start()
     super.beforeAll()
+    zkServer.start()
   }
 
   abstract override def afterAll(): Unit = {

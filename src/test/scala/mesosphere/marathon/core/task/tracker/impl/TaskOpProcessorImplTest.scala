@@ -3,7 +3,7 @@ package mesosphere.marathon.core.task.tracker.impl
 import akka.Done
 import akka.actor.{ ActorRef, Status }
 import akka.event.EventStream
-import akka.testkit.TestProbe
+import akka.testkit.{ TestKitBase, TestProbe }
 import ch.qos.logback.classic.Level
 import com.codahale.metrics.MetricRegistry
 import com.google.inject.Provider
@@ -32,7 +32,8 @@ import scala.concurrent.duration._
 import scala.util.{ Failure, Success, Try }
 
 class TaskOpProcessorImplTest
-    extends MarathonActorSupport with MarathonSpec with Mockito with GivenWhenThen with ScalaFutures with Matchers {
+    extends MarathonActorSupport with MarathonSpec with Mockito with GivenWhenThen with ScalaFutures with Matchers
+    with TestKitBase {
 
   import scala.concurrent.ExecutionContext.Implicits.global
 

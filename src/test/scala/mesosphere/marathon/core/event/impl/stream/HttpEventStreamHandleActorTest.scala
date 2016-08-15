@@ -5,7 +5,7 @@ import java.util.concurrent.CountDownLatch
 
 import akka.actor.Props
 import akka.event.EventStream
-import akka.testkit.{ EventFilter, ImplicitSender, TestActorRef }
+import akka.testkit.{ EventFilter, ImplicitSender, TestActorRef, TestKitBase }
 import mesosphere.marathon.MarathonSpec
 import mesosphere.marathon.core.event.{ EventStreamAttached, EventStreamDetached, Subscribe }
 import mesosphere.marathon.test.{ MarathonActorSupport, Mockito }
@@ -14,7 +14,8 @@ import org.scalatest.{ BeforeAndAfter, GivenWhenThen, Matchers }
 import scala.concurrent.duration._
 
 class HttpEventStreamHandleActorTest extends MarathonActorSupport
-    with MarathonSpec with Matchers with GivenWhenThen with ImplicitSender with BeforeAndAfter with Mockito {
+    with MarathonSpec with Matchers with GivenWhenThen
+    with TestKitBase with ImplicitSender with BeforeAndAfter with Mockito {
 
   test("A message send to the handle actor will be transferred to the stream handle") {
     Given("A handler that will postpone sending until latch is hit")

@@ -1,18 +1,21 @@
 package mesosphere.marathon.integration
 
+import com.typesafe.scalalogging.StrictLogging
 import mesosphere.marathon.core.health.HealthCheck
 import mesosphere.marathon.integration.setup._
 import mesosphere.marathon.state._
+import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{ BeforeAndAfter, GivenWhenThen, Matchers }
 
 import scala.concurrent.duration._
 
 class GracefulTaskKillIntegrationTest
     extends IntegrationFunSuite
-    with SingleMarathonIntegrationTest
+    with EmbeddedMarathonTest
     with Matchers
     with BeforeAndAfter
-    with GivenWhenThen {
+    with GivenWhenThen
+    with ScalaFutures with StrictLogging {
 
   before {
     cleanUp()

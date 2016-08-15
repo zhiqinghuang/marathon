@@ -1,6 +1,6 @@
 package mesosphere.marathon.upgrade
 
-import akka.testkit.{ TestActorRef, TestProbe }
+import akka.testkit.{ TestActorRef, TestKitBase, TestProbe }
 import com.codahale.metrics.MetricRegistry
 import mesosphere.marathon.core.launcher.impl.LaunchQueueTestHelper
 import mesosphere.marathon.core.launchqueue.LaunchQueue
@@ -32,7 +32,8 @@ class TaskStartActorTest
     with Matchers
     with MockitoSugar
     with ScalaFutures
-    with BeforeAndAfter {
+    with BeforeAndAfter
+    with TestKitBase {
 
   for (
     (counts, description) <- Seq(

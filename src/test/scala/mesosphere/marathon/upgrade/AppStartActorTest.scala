@@ -1,6 +1,6 @@
 package mesosphere.marathon.upgrade
 
-import akka.testkit.{ TestProbe, TestActorRef }
+import akka.testkit.{ TestActorRef, TestKitBase, TestProbe }
 import mesosphere.marathon.core.launchqueue.LaunchQueue
 import mesosphere.marathon.core.leadership.AlwaysElectedLeadershipModule
 import mesosphere.marathon.core.readiness.ReadinessCheckExecutor
@@ -9,20 +9,21 @@ import mesosphere.marathon.core.task.tracker.TaskTracker
 import mesosphere.marathon.core.event.{ DeploymentStatus, HealthStatusChanged, MesosStatusUpdateEvent }
 import mesosphere.marathon.core.health.HealthCheck
 import mesosphere.marathon.state.{ AppDefinition, PathId }
-import mesosphere.marathon.test.{ Mockito, MarathonActorSupport }
-import mesosphere.marathon.{ MarathonTestHelper, AppStartCanceledException, MarathonSpec, SchedulerActions }
+import mesosphere.marathon.test.{ MarathonActorSupport, Mockito }
+import mesosphere.marathon.{ AppStartCanceledException, MarathonSpec, MarathonTestHelper, SchedulerActions }
 import org.apache.mesos.SchedulerDriver
 import org.scalatest.{ BeforeAndAfterAll, Matchers }
 
 import scala.concurrent.duration._
-import scala.concurrent.{ Future, Await, Promise }
+import scala.concurrent.{ Await, Future, Promise }
 
 class AppStartActorTest
     extends MarathonActorSupport
     with MarathonSpec
     with Matchers
     with BeforeAndAfterAll
-    with Mockito {
+    with Mockito
+    with TestKitBase {
 
   test("Without Health Checks") {
     val f = new Fixture

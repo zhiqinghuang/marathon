@@ -19,11 +19,12 @@ trait MarathonActorSupport extends Suite with TestKitBase with BeforeAndAfterAll
     """ akka.actor.guardian-supervisor-strategy = "akka.actor.StoppingSupervisorStrategy" """
   private[this] lazy val stoppingConfig = ConfigFactory.parseString(stoppingConfigStr)
 
-  implicit lazy val system: ActorSystem = ActorSystem(getClass.getSimpleName, stoppingConfig)
+  implicit override lazy val system: ActorSystem = ActorSystem(getClass.getSimpleName, stoppingConfig)
   implicit lazy val mat: Materializer = ActorMaterializer()
+
   log.info("actor system {}: starting", system.name)
 
-  override protected def afterAll(): Unit = {
+  override def afterAll(): Unit = {
     super.afterAll()
     log.info("actor system {}: shutting down", system.name)
     TestKit.shutdownActorSystem(system)

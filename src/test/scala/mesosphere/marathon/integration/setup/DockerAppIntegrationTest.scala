@@ -1,18 +1,21 @@
 package mesosphere.marathon.integration.setup
 
-import mesosphere.marathon.integration.facades.MarathonFacade
-import MarathonFacade._
-import mesosphere.marathon.state.{ Container, AppDefinition }
+import com.typesafe.scalalogging.StrictLogging
+import mesosphere.marathon.integration.facades.MarathonFacade._
+import mesosphere.marathon.state.{ AppDefinition, Container }
+import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{ BeforeAndAfter, GivenWhenThen, Matchers }
 
 import scala.concurrent.duration._
 
 class DockerAppIntegrationTest
     extends IntegrationFunSuite
-    with SingleMarathonIntegrationTest
+    with EmbeddedMarathonTest
     with Matchers
     with BeforeAndAfter
-    with GivenWhenThen {
+    with GivenWhenThen
+    with ScalaFutures
+    with StrictLogging {
   //clean up state before running the test case
   before(cleanUp())
 

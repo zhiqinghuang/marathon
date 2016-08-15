@@ -94,17 +94,8 @@ object MarathonBuild extends Build {
     Seq(
       fork in IntegrationTest := true,
       testOptions in IntegrationTest := Seq(formattingTestArg, Tests.Argument("-n", "mesosphere.marathon.IntegrationTest")),
-      parallelExecution in IntegrationTest := false,
-      testForkedParallel in IntegrationTest := false,
-      testListeners in IntegrationTest := Seq(new JUnitXmlTestsListener((target.value / "integration").getAbsolutePath)),
-      testGrouping in IntegrationTest := (definedTests in IntegrationTest).value.map { test =>
-        Tests.Group(name = test.name, tests = Seq(test),
-          runPolicy = SubProcess(ForkOptions((javaHome in IntegrationTest).value,
-            (outputStrategy in IntegrationTest).value, Nil, Some(baseDirectory.value),
-            (javaOptions in IntegrationTest).value, (connectInput in IntegrationTest).value,
-            (envVars in IntegrationTest).value
-          )))
-      }
+      parallelExecution in IntegrationTest := true,
+      testForkedParallel in IntegrationTest := true
     )
 
   lazy val testSettings = Seq(

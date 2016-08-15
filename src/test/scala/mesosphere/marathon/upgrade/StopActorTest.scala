@@ -2,7 +2,7 @@ package mesosphere.marathon.upgrade
 
 import akka.actor.{ ActorRef, Props }
 import akka.testkit.TestActor.{ AutoPilot, NoAutoPilot }
-import akka.testkit.TestProbe
+import akka.testkit.{ TestKitBase, TestProbe }
 import mesosphere.marathon.test.MarathonActorSupport
 import mesosphere.marathon.upgrade.DeploymentActor.Cancel
 import org.scalatest.{ FunSuiteLike, Matchers }
@@ -10,7 +10,7 @@ import org.scalatest.{ FunSuiteLike, Matchers }
 import scala.concurrent.duration._
 import scala.concurrent.{ Await, Promise }
 
-class StopActorTest extends MarathonActorSupport with FunSuiteLike with Matchers {
+class StopActorTest extends MarathonActorSupport with FunSuiteLike with Matchers with TestKitBase {
 
   test("Stop") {
     val promise = Promise[Boolean]()

@@ -3,10 +3,10 @@ package mesosphere.marathon.core.task.tracker.impl
 import java.util.concurrent.TimeoutException
 
 import akka.actor.{ Status, Terminated }
-import akka.testkit.{ TestActorRef, TestProbe }
+import akka.testkit.{ TestActorRef, TestKitBase, TestProbe }
 import com.codahale.metrics.MetricRegistry
 import mesosphere.marathon.core.base.ConstantClock
-import mesosphere.marathon.core.task.{ TaskStateOp, Task }
+import mesosphere.marathon.core.task.{ Task, TaskStateOp }
 import mesosphere.marathon.integration.setup.WaitTestSupport
 import mesosphere.marathon.metrics.Metrics
 import mesosphere.marathon.state.{ PathId, Timestamp }
@@ -17,7 +17,7 @@ import scala.concurrent.duration._
 import scala.concurrent.{ Future, Promise }
 
 class TaskUpdateActorTest
-    extends MarathonActorSupport with FunSuiteLike with Mockito with GivenWhenThen with Matchers {
+    extends MarathonActorSupport with FunSuiteLike with Mockito with GivenWhenThen with Matchers with TestKitBase {
 
   test("process failures are escalated") {
     val f = new Fixture

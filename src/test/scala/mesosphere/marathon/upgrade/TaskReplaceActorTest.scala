@@ -1,7 +1,7 @@
 package mesosphere.marathon.upgrade
 
 import akka.actor.ActorRef
-import akka.testkit.TestActorRef
+import akka.testkit.{ TestActorRef, TestKitBase }
 import mesosphere.marathon.core.launchqueue.LaunchQueue
 import mesosphere.marathon.core.readiness.ReadinessCheckExecutor
 import mesosphere.marathon.core.task.{ Task, TaskKillServiceMock }
@@ -28,7 +28,8 @@ class TaskReplaceActorTest
     with Matchers
     with Eventually
     with BeforeAndAfterAll
-    with MockitoSugar {
+    with MockitoSugar
+    with TestKitBase {
 
   test("Replace without health checks") {
     val f = new Fixture

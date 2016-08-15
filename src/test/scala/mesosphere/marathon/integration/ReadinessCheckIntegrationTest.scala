@@ -2,19 +2,27 @@ package mesosphere.marathon.integration
 
 import java.io.File
 
+import com.typesafe.scalalogging.StrictLogging
 import mesosphere.marathon.api.v2.json.AppUpdate
 import mesosphere.marathon.core.readiness.ReadinessCheck
 import mesosphere.marathon.core.health.HealthCheck
 import mesosphere.marathon.integration.setup._
 import mesosphere.marathon.state._
 import org.apache.commons.io.FileUtils
-import org.scalatest.{ Matchers, BeforeAndAfter, GivenWhenThen }
+import org.scalatest.concurrent.ScalaFutures
+import org.scalatest.{ BeforeAndAfter, GivenWhenThen, Matchers }
 
 import scala.util.Try
 import scala.concurrent.duration._
 import scala.collection.immutable.Seq
 
-class ReadinessCheckIntegrationTest extends IntegrationFunSuite with SingleMarathonIntegrationTest with Matchers with BeforeAndAfter with GivenWhenThen {
+class ReadinessCheckIntegrationTest extends IntegrationFunSuite
+    with EmbeddedMarathonTest
+    with Matchers
+    with BeforeAndAfter
+    with GivenWhenThen
+    with StrictLogging
+    with ScalaFutures {
 
   //clean up state before running the test case
   before(cleanUp())

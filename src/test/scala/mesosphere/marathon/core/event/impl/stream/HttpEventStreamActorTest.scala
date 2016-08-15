@@ -16,7 +16,8 @@ import org.scalatest.{ BeforeAndAfter, GivenWhenThen, Matchers }
 import scala.concurrent.duration._
 
 class HttpEventStreamActorTest extends MarathonActorSupport
-    with MarathonSpec with Matchers with GivenWhenThen with MockitoSugar with ImplicitSender with BeforeAndAfter {
+    with MarathonSpec with Matchers with GivenWhenThen with MockitoSugar
+    with TestKitBase with ImplicitSender with BeforeAndAfter {
 
   test("Register Handler") {
     Given("A handler that wants to connect and we have an active streamActor")

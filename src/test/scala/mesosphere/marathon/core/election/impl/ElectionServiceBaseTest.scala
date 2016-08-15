@@ -3,6 +3,7 @@ package mesosphere.marathon.core.election.impl
 import java.util.concurrent.atomic.AtomicBoolean
 
 import akka.event.EventStream
+import akka.testkit.TestKitBase
 import com.codahale.metrics.MetricRegistry
 import mesosphere.chaos.http.HttpConf
 import mesosphere.marathon.core.base.ShutdownHooks
@@ -22,7 +23,8 @@ class ElectionServiceBaseTest
     with MarathonSpec
     with GivenWhenThen
     with BeforeAndAfterAll
-    with Matchers {
+    with Matchers
+    with TestKitBase {
 
   import ElectionServiceBase._
 

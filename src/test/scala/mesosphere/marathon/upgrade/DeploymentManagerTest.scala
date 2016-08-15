@@ -3,7 +3,7 @@ package mesosphere.marathon.upgrade
 import akka.actor.ActorRef
 import akka.event.EventStream
 import akka.testkit.TestActor.{ AutoPilot, NoAutoPilot }
-import akka.testkit.{ ImplicitSender, TestActorRef, TestProbe }
+import akka.testkit.{ ImplicitSender, TestActorRef, TestKitBase, TestProbe }
 import akka.util.Timeout
 import com.codahale.metrics.MetricRegistry
 import mesosphere.marathon.core.health.HealthCheckManager
@@ -40,7 +40,8 @@ class DeploymentManagerTest
     with BeforeAndAfterAll
     with Mockito
     with Eventually
-    with ImplicitSender {
+    with ImplicitSender
+    with TestKitBase {
 
   test("deploy") {
     val f = new Fixture

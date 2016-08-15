@@ -20,7 +20,7 @@ class MarathonApp(args: Seq[String]) extends AutoCloseable {
   private var running = false
   private val log = LoggerFactory.getLogger(getClass.getName)
   val conf = new AllConf(args)
-  protected val modules: Seq[Module] = {
+  protected def modules: Seq[Module] = {
     Seq(
       new HttpModule(conf),
       new MetricsModule,

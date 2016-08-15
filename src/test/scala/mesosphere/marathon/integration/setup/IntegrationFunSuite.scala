@@ -3,9 +3,9 @@ package mesosphere.marathon.integration.setup
 import java.io.File
 
 import akka.actor.ActorSystem
+import mesosphere.marathon.IntegrationTest
 import mesosphere.marathon.state.PathId
 import org.joda.time.DateTime
-import org.scalactic.source.Position
 import org.scalatest._
 
 import scala.collection.mutable
@@ -21,12 +21,8 @@ object IntegrationTag extends Tag("mesosphere.marathon.IntegrationTest")
 /**
   * Convenience trait, which will mark all test cases as integration tests.
   */
-trait IntegrationFunSuite extends FunSuite {
-
-  override protected def test(testName: String, testTags: Tag*)(testFun: => Any)(implicit pos: Position): Unit = {
-    super.test(testName, IntegrationTag +: testTags: _*)(testFun)
-  }
-}
+@IntegrationTest
+trait IntegrationFunSuite extends FunSuite
 
 /**
   * Trait for running external marathon instances.
@@ -95,7 +91,7 @@ class IntegrationHealthCheck(val appId: PathId, val versionId: String, val port:
 
   def forVersion(versionId: String, state: Boolean) = {
     val result = new IntegrationHealthCheck(appId, versionId, port, state)
-    ExternalMarathonIntegrationTest.healthChecks += result
+    //ExternalMarathonIntegrationTest.healthChecks += result
     result
   }
 

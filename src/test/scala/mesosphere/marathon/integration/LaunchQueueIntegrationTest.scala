@@ -1,13 +1,22 @@
 package mesosphere.marathon.integration
 
+import com.typesafe.scalalogging.StrictLogging
 import mesosphere.marathon.Protos
 import mesosphere.marathon.Protos.Constraint.Operator
 import mesosphere.marathon.integration.setup._
 import mesosphere.marathon.state.AppDefinition
+import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{ GivenWhenThen, Matchers }
+
 import scala.concurrent.duration._
 
-class LaunchQueueIntegrationTest extends IntegrationFunSuite with SingleMarathonIntegrationTest with GivenWhenThen with Matchers {
+class LaunchQueueIntegrationTest extends IntegrationFunSuite
+    with EmbeddedMarathonTest
+    with GivenWhenThen
+    with Matchers
+    with ScalaFutures
+    with StrictLogging {
+
   test("GET /v2/queue with an empty queue") {
     Given("no pending deployments")
     marathon.listDeploymentsForBaseGroup().value should have size 0
