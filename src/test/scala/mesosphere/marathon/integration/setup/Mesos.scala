@@ -284,6 +284,14 @@ trait MesosTest {
   val mesosMasterUrl: String
 }
 
+trait SimulatedMesosTest extends MesosTest {
+  def mesos: MesosFacade = {
+    require(false, "No access to mesos")
+    ???
+  }
+  val mesosMasterUrl = ""
+}
+
 trait MesosLocalTest extends MesosTest with BeforeAndAfterAll { this: Suite with ScalaFutures =>
   private implicit val system = ActorSystem()
   private implicit val mat = ActorMaterializer()

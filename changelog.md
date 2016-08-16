@@ -354,14 +354,14 @@ hopefully leads to better error messages in the future.
 A number of very convenient features and improvements made it into this release.
 
 #### Perform actions directly from the Applications list
-A new contextual dropdown menu in the Applications list gives access to the most useful actions (scale, destroy,
-suspend, etc.) without having to enter an application's detail view. Additionally, it is now possible to perform scale
+A new contextual dropdown menu in the Applications list gives access to the most useful actions (mesosphere.marathon.scale, destroy,
+suspend, etc.) without having to enter an application's detail view. Additionally, it is now possible to perform mesosphere.marathon.scale
 and delete operations on entire Groups.
 
 #### Better feedback
 The feedback dialogs have been completely redesigned to be clearer and more useful, adding three possible color-coded
 severity levels: `info`, `warning` and `error`. In addition, the action button labels have been rephrased for improved
-usability. Buttons that may lead to dangerous actions (such as "force scale") are also not preselected by default anymore.
+usability. Buttons that may lead to dangerous actions (such as "force mesosphere.marathon.scale") are also not preselected by default anymore.
 
 #### Application Health
 The health status breakdown is now also shown in the application details page.
@@ -617,7 +617,7 @@ With those reporters you can transfer the data into either Graphite or DataDog a
 
 #### Force action
 Previous versions of the UI did not support sending the `?force=true` query parameter when the
-user submitted a scale action or when changing an app's configuration. These actions would be
+user submitted a mesosphere.marathon.scale action or when changing an app's configuration. These actions would be
 rejected if the app was locked by one or more deployments.
 In this version, the user is presented with a modal confirmation dialog when a force action is
 required to proceed.
@@ -725,7 +725,7 @@ available, but disabled by default:
 
   To enable this feature, start Marathon with the `--zk_compression` flag.
 * A new flag (`--max_apps`) has been introduced, which allows Marathon to limit the maximum number
-  of applications that may be created. This limit is disabled by default, but we performed scale
+  of applications that may be created. This limit is disabled by default, but we performed mesosphere.marathon.scale
   tests on this release and recommend setting the limit to 500.
 
 #### Fixed issues
@@ -1489,7 +1489,7 @@ this group.
 #### New endpoint POST `/v2/tasks/delete`
 
 Takes a JSON object containing an array of task ids and kills them.
-If `?scale=true` the tasks will not be restarted and the `instances`
+If `?mesosphere.marathon.scale=true` the tasks will not be restarted and the `instances`
 field of the affected apps will be adjusted.
 
 #### POST `/v2/apps` rejects existing ids

@@ -25,13 +25,13 @@ get:
       Kill a list of running tasks.
     is: [ secured, deployable ]
     queryParameters:
-      scale:
+      mesosphere.marathon.scale:
         type: boolean
-        description: If `scale=true` is specified, then the related application is scaled down by the number of killed tasks. Only possible if `wipe=false` or not specified.
+        description: If `mesosphere.marathon.scale=true` is specified, then the related application is scaled down by the number of killed tasks. Only possible if `wipe=false` or not specified.
         default: false
       wipe:
         type: boolean
-        description: If `wipe=true` is specified and the app uses local persistent volumes, associated dynamic reservations will be unreserved, and persistent volumes will be destroyed. Only possible if `scale=false` or not specified.
+        description: If `wipe=true` is specified and the app uses local persistent volumes, associated dynamic reservations will be unreserved, and persistent volumes will be destroyed. Only possible if `mesosphere.marathon.scale=false` or not specified.
         default: false
     body:
       application/json:
@@ -39,8 +39,8 @@ get:
           { "ids": [ "task1", "task2" ] }
     responses:
       200:
-        description: If scale=false, all tasks that were killed are returned.
-          If scale=true, than a deployment is triggered and the deployment is returned.
+        description: If mesosphere.marathon.scale=false, all tasks that were killed are returned.
+          If mesosphere.marathon.scale=true, than a deployment is triggered and the deployment is returned.
         body:
           application/json:
             example: !include examples/tasks.json

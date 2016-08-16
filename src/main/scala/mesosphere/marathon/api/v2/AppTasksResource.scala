@@ -95,7 +95,7 @@ class AppTasksResource @Inject() (
       }
     }
 
-    if (scale && wipe) throw new BadRequestException("You cannot use scale and wipe at the same time.")
+    if (scale && wipe) throw new BadRequestException("You cannot use mesosphere.marathon.scale and wipe at the same time.")
 
     if (scale) {
       val deploymentF = taskKiller.killAndScale(pathId, findToKill, force)
@@ -120,7 +120,7 @@ class AppTasksResource @Inject() (
     val pathId = appId.toRootPath
     def findToKill(appTasks: Iterable[Task]): Iterable[Task] = appTasks.find(_.taskId == Task.Id(id))
 
-    if (scale && wipe) throw new BadRequestException("You cannot use scale and wipe at the same time.")
+    if (scale && wipe) throw new BadRequestException("You cannot use mesosphere.marathon.scale and wipe at the same time.")
 
     if (scale) {
       val deploymentF = taskKiller.killAndScale(pathId, findToKill, force)

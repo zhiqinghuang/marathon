@@ -169,7 +169,7 @@ class MarathonSchedulerActorTest extends MarathonActorSupport
 
       awaitAssert(verify(taskFailureEventRepository, times(1)).store(taskFailureEvent), 5.seconds, 10.millis)
 
-      // KillTasks does no longer scale
+      // KillTasks does no longer mesosphere.marathon.scale
       verify(repo, times(0)).store(any[AppDefinition])
     } finally {
       stopActor(schedulerActor)

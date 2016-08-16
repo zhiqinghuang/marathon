@@ -1,4 +1,4 @@
-package mesosphere.mesos.simulation
+package mesosphere.marathon.simulation
 
 import com.google.inject._
 import com.google.inject.util.Modules

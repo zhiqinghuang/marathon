@@ -1,4 +1,4 @@
-package mesosphere.mesos.scale
+package mesosphere.marathon.scale
 
 import java.io.{ FileWriter, File }
 

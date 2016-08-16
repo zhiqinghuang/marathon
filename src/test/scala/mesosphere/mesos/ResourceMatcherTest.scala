@@ -527,7 +527,7 @@ class ResourceMatcherTest extends MarathonSpec with Matchers {
     )
 
     //We have 4 tasks spread across 2 DC and 3 zones
-    //We want to scale our application.
+    //We want to mesosphere.marathon.scale our application.
     //But it will conflict with previously launched tasks.
     val tasks = Set(
 

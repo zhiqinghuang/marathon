@@ -220,7 +220,7 @@ only on hosts that have the specified ports available.
 
 ##### instances (Integer)
 
-The number of instances of this application to start. Please note: this number can be changed everytime as needed to scale the application.
+The number of instances of this application to start. Please note: this number can be changed everytime as needed to mesosphere.marathon.scale the application.
 
 ##### executor (String)
 

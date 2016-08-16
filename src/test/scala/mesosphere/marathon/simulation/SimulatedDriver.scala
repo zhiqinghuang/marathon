@@ -1,10 +1,10 @@
-package mesosphere.mesos.simulation
+package mesosphere.marathon.simulation
 
 import java.util
 import java.util.Collections
 
-import akka.actor.{ ActorRef, ActorSystem, Props }
-import com.typesafe.config.{ Config, ConfigFactory }
+import akka.actor.{ActorRef, ActorSystem, Props}
+import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.mesos.Protos._
 import org.apache.mesos.SchedulerDriver
 import org.slf4j.LoggerFactory
@@ -14,13 +14,13 @@ import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 
 /**
-  * The facade to the mesos simulation.
+  * The facade to the mesos mesosphere.marathon.simulation.
   *
-  * It starts/stops a new actor system for the simulation when the corresponding life-cycle methods of the
+  * It starts/stops a new actor system for the mesosphere.marathon.simulation when the corresponding life-cycle methods of the
   * [[org.apache.mesos.SchedulerDriver]] interface are called.
   *
   * The implemented commands of the driver interface are forwarded as messages to the
-  * [[mesosphere.mesos.simulation.DriverActor]].
+  * [[DriverActor]].
   * Unimplemented methods throw [[scala.NotImplementedError]]s.
   */
 class SimulatedDriver(driverProps: Props) extends SchedulerDriver {
@@ -85,7 +85,7 @@ class SimulatedDriver(driverProps: Props) extends SchedulerDriver {
   override def start(): Status = {
     log.info("Starting simulated Mesos")
     val config: Config = ConfigFactory.load(getClass.getClassLoader, "mesos-simulation.conf")
-    val sys: ActorSystem = ActorSystem("mesos-simulation", config)
+    val sys: ActorSystem = ActorSystem("mesos-mesosphere-marathon-simulation", config)
     system = Some(sys)
     driverActorRefOpt = Some(sys.actorOf(driverProps, "driver"))
     driverCmd(this)

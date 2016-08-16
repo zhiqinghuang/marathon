@@ -472,7 +472,7 @@ Kill tasks that belong to the application `appId`.
         Default: <code>none</code>.</td>
     </tr>
     <tr>
-      <td><code>scale</code></td>
+      <td><code>mesosphere.marathon.scale</code></td>
       <td><code>boolean</code></td>
       <td>Scale the app down (i.e. decrement its <code>instances</code> setting
         by the number of tasks killed) after killing the specified tasks.
@@ -481,7 +481,7 @@ Kill tasks that belong to the application `appId`.
     <tr>
       <td><code>wipe</code></td>
       <td><code>boolean</code></td>
-      <td>If <code>wipe=true</code> is specified and the app uses local persistent volumes, associated dynamic reservations will be unreserved, and persistent volumes will be destroyed. Only possible if <code>scale=false</code> or not specified.
+      <td>If <code>wipe=true</code> is specified and the app uses local persistent volumes, associated dynamic reservations will be unreserved, and persistent volumes will be destroyed. Only possible if <code>mesosphere.marathon.scale=false</code> or not specified.
         Default: <code>false</code>.</td>
     </tr>
   </tbody>
@@ -492,7 +492,7 @@ Kill tasks that belong to the application `appId`.
 **Request:**
 
 ```http
-DELETE /v2/apps/my-app/tasks?host=mesos.vm&scale=false HTTP/1.1
+DELETE /v2/apps/my-app/tasks?host=mesos.vm&mesosphere.marathon.scale=false HTTP/1.1
 Accept: application/json
 Accept-Encoding: gzip, deflate, compress
 Content-Length: 0
@@ -530,7 +530,7 @@ Kill the task with ID `taskId` that belongs to the application `appId`.
   </thead>
   <tbody>
     <tr>
-      <td><code>scale</code></td>
+      <td><code>mesosphere.marathon.scale</code></td>
       <td><code>boolean</code></td>
       <td>Scale the app down (i.e. decrement its <code>instances</code> setting
         by the number of tasks killed) after killing the specified task.
@@ -540,7 +540,7 @@ Kill the task with ID `taskId` that belongs to the application `appId`.
     <tr>
       <td><code>wipe</code></td>
       <td><code>boolean</code></td>
-      <td>If <code>wipe=true</code> is specified and the app uses local persistent volumes, associated dynamic reservations will be unreserved, and persistent volumes will be destroyed. Only possible if <code>scale=false</code> or not specified.
+      <td>If <code>wipe=true</code> is specified and the app uses local persistent volumes, associated dynamic reservations will be unreserved, and persistent volumes will be destroyed. Only possible if <code>mesosphere.marathon.scale=false</code> or not specified.
         Default: <code>false</code>.</td>
     </tr>
   </tbody>
@@ -1243,7 +1243,7 @@ my-app2  11186 agouti.local:31337  agouti.local:31365  agouti.local:31383
 
 #### POST `/v2/tasks/delete`
 
-Kill the given list of tasks and scale apps if requested.
+Kill the given list of tasks and mesosphere.marathon.scale apps if requested.
 
 ##### Parameters
 
@@ -1257,7 +1257,7 @@ Kill the given list of tasks and scale apps if requested.
   </thead>
   <tbody>
     <tr>
-      <td><code>scale</code></td>
+      <td><code>mesosphere.marathon.scale</code></td>
       <td><code>boolean</code></td>
       <td>Scale the app down (i.e. decrement its <code>instances</code> setting
         by the number of tasks killed) after killing the specified tasks. Only possible if <code>wipe=false</code> or not specified.
@@ -1266,7 +1266,7 @@ Kill the given list of tasks and scale apps if requested.
     <tr>
       <td><code>wipe</code></td>
       <td><code>boolean</code></td>
-      <td>If <code>wipe=true</code> is specified and the app uses local persistent volumes, associated dynamic reservations will be unreserved, and persistent volumes will be destroyed. Only possible if <code>scale=false</code> or not specified.
+      <td>If <code>wipe=true</code> is specified and the app uses local persistent volumes, associated dynamic reservations will be unreserved, and persistent volumes will be destroyed. Only possible if <code>mesosphere.marathon.scale=false</code> or not specified.
         Default: <code>false</code>.</td>
     </tr>
   </tbody>

@@ -149,7 +149,7 @@ class SchedulerActionsTest
   // This scenario is the following:
   // - There's an active queue and Marathon has 10 running + 5 staged tasks
   // - Marathon receives StatusUpdates for 5 previously LOST tasks
-  // - A scale is initiated and Marathon realizes there are 5 tasks over capacity
+  // - A mesosphere.marathon.scale is initiated and Marathon realizes there are 5 tasks over capacity
   // => We expect Marathon to kill the 5 staged tasks
   test("Kill staged tasks in correct order in case lost tasks reappear") {
     val f = new Fixture

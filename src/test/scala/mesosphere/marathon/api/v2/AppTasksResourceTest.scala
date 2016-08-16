@@ -39,14 +39,14 @@ class AppTasksResourceTest extends MarathonSpec with Matchers with GivenWhenThen
       .correspondsToJsonOf(Json.obj("tasks" -> toKill))
   }
 
-  test("deleteMany with scale and wipe fails") {
+  test("deleteMany with mesosphere.marathon.scale and wipe fails") {
     val appId = "/my/app"
     val host = "host"
 
     val exception = intercept[BadRequestException] {
       appsTaskResource.deleteMany(appId, host, scale = true, force = false, wipe = true, auth.request)
     }
-    exception.getMessage shouldEqual "You cannot use scale and wipe at the same time."
+    exception.getMessage shouldEqual "You cannot use mesosphere.marathon.scale and wipe at the same time."
   }
 
   test("deleteMany with wipe delegates to taskKiller with wipe value") {
@@ -85,14 +85,14 @@ class AppTasksResourceTest extends MarathonSpec with Matchers with GivenWhenThen
     verifyNoMoreInteractions(taskKiller)
   }
 
-  test("deleteOne with scale and wipe fails") {
+  test("deleteOne with mesosphere.marathon.scale and wipe fails") {
     val appId = "/my/app"
     val id = "task-1"
 
     val exception = intercept[BadRequestException] {
       appsTaskResource.deleteOne(appId, id, scale = true, force = false, wipe = true, auth.request)
     }
-    exception.getMessage shouldEqual "You cannot use scale and wipe at the same time."
+    exception.getMessage shouldEqual "You cannot use mesosphere.marathon.scale and wipe at the same time."
   }
 
   test("deleteOne with wipe delegates to taskKiller with wipe value") {

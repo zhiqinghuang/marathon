@@ -210,13 +210,13 @@ trait MarathonConf
   lazy val scaleAppsInitialDelay = opt[Long](
     "scale_apps_initial_delay",
     descr = "This is the length of time, in milliseconds, before Marathon " +
-      "begins to periodically attempt to scale apps.",
+      "begins to periodically attempt to mesosphere.marathon.scale apps.",
     default = Some(15000L)) // 15 seconds
 
   lazy val scaleAppsInterval = opt[Long](
     "scale_apps_interval",
     descr = "This is the length of time, in milliseconds, between task " +
-      "scale apps.",
+      "mesosphere.marathon.scale apps.",
     default = Some(300000L)) // 300 seconds (5 minutes)
 
   @deprecated("marathon_store_timeout is no longer used and will be removed soon.", "v0.12")

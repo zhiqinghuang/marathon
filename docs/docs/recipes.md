@@ -185,7 +185,7 @@ To enable this feature for marathon versions prior to `0.7.4`, start Marathon wi
 
 ## Constraining task placement / static partitioning
 
-Usually, Marathon decides where to start your application tasks without your input. This allows your infrastructure to scale easily, since all resources are treated equally.
+Usually, Marathon decides where to start your application tasks without your input. This allows your infrastructure to mesosphere.marathon.scale easily, since all resources are treated equally.
 
 However, there are times when you want to separate some machines from the common pool and schedule only certain tasks on them. For example:
 

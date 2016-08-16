@@ -81,7 +81,7 @@ class AppDeployIntegrationTest
   test("backoff delays are NOT reset on scaling changes") {
     val app: AppDefinition = createAFailingAppResultingInBackOff()
 
-    When("we force deploy a scale change")
+    When("we force deploy a mesosphere.marathon.scale change")
     val deployment2 = marathon.updateApp(app.id, AppUpdate(instances = Some(3)), force = true)
 
     Then("The app deployment is created")
@@ -316,7 +316,7 @@ class AppDeployIntegrationTest
     check.pingSince(5.seconds) should be (true) //make sure, the new version is alive
   }
 
-  test("scale an app up and down") {
+  test("mesosphere.marathon.scale an app up and down") {
     Given("a new app")
     val app = appProxy(testBasePath / "app", "v1", instances = 1, withHealth = false)
     marathon.createAppV2(app).code should be (201)

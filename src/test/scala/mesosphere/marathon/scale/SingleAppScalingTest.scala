@@ -1,13 +1,12 @@
-package mesosphere.mesos.scale
+package mesosphere.marathon.scale
 
-import java.io.File
-
+import com.typesafe.scalalogging.StrictLogging
 import mesosphere.marathon.api.v2.json.AppUpdate
 import mesosphere.marathon.integration.facades.ITDeploymentResult
 import mesosphere.marathon.integration.facades.MarathonFacade._
 import mesosphere.marathon.integration.setup._
-import mesosphere.marathon.state.{ AppDefinition, PathId }
-import org.scalatest.{ BeforeAndAfter, ConfigMap, GivenWhenThen, Matchers }
+import mesosphere.marathon.state.{AppDefinition, PathId}
+import org.scalatest.{BeforeAndAfter, GivenWhenThen, Matchers}
 import org.slf4j.LoggerFactory
 import play.api.libs.json._
 
@@ -20,36 +19,49 @@ object SingleAppScalingTest {
 
 class SingleAppScalingTest
     extends IntegrationFunSuite
-    with SingleMarathonIntegrationTest
+    with ZookeeperServerTest
+    with SimulatedMesosTest
+    with LocalMarathonTest
     with Matchers
     with BeforeAndAfter
-    with GivenWhenThen {
+    with GivenWhenThen
+    with StrictLogging {
+
+  override val useSimulatedMesos = true
 
   private[this] val log = LoggerFactory.getLogger(getClass)
+  val maxTasksPerOffer = Option(System.getenv("MARATHON_MAX_TASKS_PER_OFFER")).getOrElse("1")
+
+  override val marathonArgs: Map[String, String] = Map("max_tasks_per_offer" -> maxTasksPerOffer,
+    "task_launch_timeout" -> "20000",
+    "task_launch_confirm_timeout" -> "1000")
+
+  override def cleanUp(withSubscribers: Boolean = false, maxWait: FiniteDuration = 30.seconds): Unit = {
+    logger.info("Starting to CLEAN UP !!!!!!!!!!")
+    events.clear()
+
+    val deleteResult: RestResult[ITDeploymentResult] = marathon.deleteGroup(testBasePath, force = true)
+    if (deleteResult.code != 404) {
+      waitForChange(deleteResult)
+    }
+
+    val apps = marathon.listAppsInBaseGroup
+    require(apps.value.isEmpty, s"apps weren't empty: ${apps.entityPrettyJsonString}")
+    val groups = marathon.listGroupsInBaseGroup
+    require(groups.value.isEmpty, s"groups weren't empty: ${groups.entityPrettyJsonString}")
+
+    logger.info("CLEAN UP finished !!!!!!!!!")
+  }
 
   //clean up state before running the test case
   before(cleanUp())
 
-  override def afterAll(configMap: ConfigMap): Unit = {
-    super.afterAll(configMap)
+  override def afterAll(): Unit = {
+    super.afterAll()
     println()
     DisplayAppScalingResults.displayMetrics(SingleAppScalingTest.metricsFile)
     println()
     DisplayAppScalingResults.displayAppInfoScaling(SingleAppScalingTest.appInfosFile)
-  }
-
-  override def startMarathon(port: Int, args: String*): Unit = {
-    val cwd = new File(".")
-
-    val maxTasksPerOffer = Option(System.getenv("MARATHON_MAX_TASKS_PER_OFFER")).getOrElse("1")
-
-    ProcessKeeper.startMarathon(cwd, env,
-      List("--http_port", port.toString,
-        "--zk", config.zk,
-        "--max_tasks_per_offer", maxTasksPerOffer,
-        "--task_launch_timeout", "20000",
-        "--task_launch_confirm_timeout", "1000") ++ args.toList,
-      mainClass = "mesosphere.mesos.simulation.SimulateMesosMain")
   }
 
   private[this] def createStopApp(instances: Int): Unit = {

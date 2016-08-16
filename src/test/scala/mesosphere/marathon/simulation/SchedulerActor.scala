@@ -1,4 +1,4 @@
-package mesosphere.mesos.simulation
+package mesosphere.marathon.simulation
 
 import akka.actor.{ Actor, Stash }
 import akka.event.LoggingReceive

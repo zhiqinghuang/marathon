@@ -1,4 +1,4 @@
-package mesosphere.mesos.scale
+package mesosphere.marathon.scale
 
 import play.api.libs.json.JsObject
 import play.api.libs.json.Reads._

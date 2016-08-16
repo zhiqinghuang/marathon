@@ -109,7 +109,7 @@ class TasksResource @Inject() (
     body: Array[Byte],
     @Context req: HttpServletRequest): Response = authenticated(req) { implicit identity =>
 
-    if (scale && wipe) throw new BadRequestException("You cannot use scale and wipe at the same time.")
+    if (scale && wipe) throw new BadRequestException("You cannot use mesosphere.marathon.scale and wipe at the same time.")
 
     val taskIds = (Json.parse(body) \ "ids").as[Set[String]]
     val tasksToAppId = taskIds.map { id =>

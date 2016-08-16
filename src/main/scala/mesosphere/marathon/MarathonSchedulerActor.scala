@@ -545,7 +545,7 @@ class SchedulerActions(
     val targetCount = app.instances
 
     if (targetCount > launchedCount) {
-      log.info(s"Need to scale ${app.id} from $launchedCount up to $targetCount instances")
+      log.info(s"Need to mesosphere.marathon.scale ${app.id} from $launchedCount up to $targetCount instances")
 
       val queuedOrRunning = launchQueue.get(app.id).map {
         info => info.finalTaskCount - info.tasksLost

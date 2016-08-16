@@ -18,7 +18,7 @@ case class GroupUpdate(
   def groupId: PathId = id.getOrElse(throw new IllegalArgumentException("No group id was given!"))
 
   def apply(current: Group, timestamp: Timestamp): Group = {
-    require(scaleBy.isEmpty, "To apply the update, no scale should be given.")
+    require(scaleBy.isEmpty, "To apply the update, no mesosphere.marathon.scale should be given.")
     require(version.isEmpty, "To apply the update, no version should be given.")
     val effectiveGroups = groups.fold(current.groups) { updates =>
       val currentIds = current.groups.map(_.id)

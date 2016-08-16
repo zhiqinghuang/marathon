@@ -530,7 +530,7 @@ PUT /v2/apps/product-a/frontend/play
 ##### Kill a task
 
 ```
-DELETE /v2/tasks/product-a/frontend/play/task_xxxx?scale=true
+DELETE /v2/tasks/product-a/frontend/play/task_xxxx?mesosphere.marathon.scale=true
 ```
 
 ##### Get a list of apps in a subtree

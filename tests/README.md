@@ -36,7 +36,7 @@ sbt bench:test
 ```
 
 This tests can take significantly time to run and provide performance benchmarks on things like
-how long activities like saving to zk will take at different levels of scale.
+how long activities like saving to zk will take at different levels of mesosphere.marathon.scale.
 
 ## System Testing
 

@@ -99,7 +99,7 @@ class TaskKillerTest extends MarathonSpec
     verify(f.service, times(1)).killTasks(appId, tasksToKill)
   }
 
-  test("Kill and scale w/o force should fail if there is a deployment") {
+  test("Kill and mesosphere.marathon.scale w/o force should fail if there is a deployment") {
     val f = new Fixture
     val appId = PathId(List("my", "app"))
     val task1 = MarathonTestHelper.runningTaskForApp(appId)

@@ -12,9 +12,9 @@ title: Marathon Resources
 
 - [Docker Clustering on Mesosphere with Marathon](http://youtu.be/hZNGST2vIds)  
   _10 November 2014_  
-  This video is a demonstration of how to launch and scale Docker containers
+  This video is a demonstration of how to launch and mesosphere.marathon.scale Docker containers
   into an Apache Mesos cluster using Marathon. It shows how it is possible
-  today to scale docker instances in production with Mesos.
+  today to mesosphere.marathon.scale docker instances in production with Mesos.
 
 ### Tutorials
 

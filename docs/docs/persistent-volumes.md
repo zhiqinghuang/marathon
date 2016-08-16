@@ -56,7 +56,7 @@ You also need to set the `residency` node in order to tell Marathon to setup a s
 
 ### Scaling stateful applications
 
-When you scale your app down, the volumes associated with the terminated instances are detached but all resources are still reserved. At this point, you may delete the tasks via the Marathon REST API, which will free reserved resources and destroy the persistent volumes.
+When you mesosphere.marathon.scale your app down, the volumes associated with the terminated instances are detached but all resources are still reserved. At this point, you may delete the tasks via the Marathon REST API, which will free reserved resources and destroy the persistent volumes.
 
 Since all the resources your application needs are still reserved when a volume is detached, you may wish to destroy detached volumes in order to allow other applications and frameworks to use the resources. You may wish to leave them in the detached state, however, if you think you will be scaling your app up again; the data on the volume will still be there.
 
@@ -79,7 +79,7 @@ Mesos creates persistent volumes to hold your application's stateful data. Becau
 
 Once a task that used persistent volumes has terminated, its metadata will be kept. This metadata will be used to launch a replacement task when needed.
 
-For example, if you scale down from 5 to 3 instances, you will see 2 tasks in the `Waiting` state along with the information about the persistent volumes the tasks were using as well as about the agents on which they are placed. Marathon will not unreserve those resources and will not destroy the volumes. When you scale up again, Marathon will attempt to launch tasks that use those existing reservations and volumes as soon as it gets a Mesos offer containing the labeled resources. Marathon will only schedule unreserve/destroy operations when:
+For example, if you mesosphere.marathon.scale down from 5 to 3 instances, you will see 2 tasks in the `Waiting` state along with the information about the persistent volumes the tasks were using as well as about the agents on which they are placed. Marathon will not unreserve those resources and will not destroy the volumes. When you mesosphere.marathon.scale up again, Marathon will attempt to launch tasks that use those existing reservations and volumes as soon as it gets a Mesos offer containing the labeled resources. Marathon will only schedule unreserve/destroy operations when:
 
 - the application is deleted (in which case volumes of all its tasks are destroyed, and all reservations are deleted).
 - you explicitly delete one or more suspended tasks with a `wipe=true` flag.

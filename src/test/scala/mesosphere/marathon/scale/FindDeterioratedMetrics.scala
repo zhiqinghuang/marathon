@@ -1,8 +1,6 @@
-package mesosphere.mesos.scale
+package mesosphere.marathon.scale
 
 import java.net.URL
-
-import mesosphere.mesos.scale.MetricsFormat._
 
 import scala.collection.immutable.Iterable
 
@@ -10,6 +8,7 @@ import scala.collection.immutable.Iterable
   * Compare Metrics Samples and find all metrics, that get deteriorated by given factor.
   */
 object FindDeterioratedMetrics {
+  import MetricsFormat._
 
   /**
     * Compare 2 Metrics Samples and filter all metrics, that get deteriorated by given factor.

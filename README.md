@@ -14,7 +14,7 @@ Chronos or [Storm][Storm] with it to ensure they survive machine failures.
 It can launch anything that can be launched in a standard shell. In fact, you
 can even start other Marathon instances via Marathon.
 
-Since Marathon version 0.7.0 and Mesos 0.20.0, you can [deploy, run and scale Docker containers](https://mesosphere.github.io/marathon/docs/native-docker.html) easily with native support.
+Since Marathon version 0.7.0 and Mesos 0.20.0, you can [deploy, run and mesosphere.marathon.scale Docker containers](https://mesosphere.github.io/marathon/docs/native-docker.html) easily with native support.
 
 ## Features
 

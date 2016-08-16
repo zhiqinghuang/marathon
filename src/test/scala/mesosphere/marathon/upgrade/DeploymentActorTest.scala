@@ -94,7 +94,7 @@ class DeploymentActorTest
 
       verify(f.scheduler).startApp(f.driver, app3.copy(instances = 0))
       println(f.killService.killed.mkString(","))
-      f.killService.killed should contain (task1_2.taskId) // killed due to scale down
+      f.killService.killed should contain (task1_2.taskId) // killed due to mesosphere.marathon.scale down
       f.killService.killed should contain (task2_1.taskId) // killed due to config change
       f.killService.killed should contain (task4_1.taskId) // killed because app4 does not exist anymore
       f.killService.numKilled should be (3)

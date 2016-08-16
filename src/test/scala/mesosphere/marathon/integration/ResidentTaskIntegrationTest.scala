@@ -150,7 +150,7 @@ class ResidentTaskIntegrationTest
     Given("A resident app with 0 instances")
     val app = f.createSuccessfully(f.residentApp(instances = 0))
 
-    When("We scale up to 5 instances")
+    When("We mesosphere.marathon.scale up to 5 instances")
     f.scaleToSuccessfully(app.id, 5)
 
     Then("exactly 5 tasks have been created")
@@ -161,7 +161,7 @@ class ResidentTaskIntegrationTest
     Given("a resident app with 5 instances")
     val app = f.createSuccessfully(f.residentApp(instances = 5))
 
-    When("we scale down to 0 instances")
+    When("we mesosphere.marathon.scale down to 0 instances")
     f.suspendSuccessfully(app.id)
 
     Then("all tasks are suspended")

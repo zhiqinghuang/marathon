@@ -34,7 +34,7 @@ class TaskLostIntegrationWithoutGCTest extends IntegrationFunSuite with Embedded
     mesosCluster.agents.head.start()
   }
 
-  test("A task lost with mesos master failover will not expunge the task and a scale down will succeed") {
+  test("A task lost with mesos master failover will not expunge the task and a mesosphere.marathon.scale down will succeed") {
     // TODO: the test should also run with 1 task and one agent
     mesosCluster.agents.tail.head.start()
 
@@ -67,7 +67,7 @@ class TaskLostIntegrationWithoutGCTest extends IntegrationFunSuite with Embedded
     tasks1 should have size 2
     tasks1.exists(_.state == "TASK_LOST") shouldBe true
 
-    When("We scale down the app")
+    When("We mesosphere.marathon.scale down the app")
     marathon.updateApp(appId, AppUpdate(instances = Some(1)))
 
     Then("The deployment finishes")

@@ -116,20 +116,20 @@ class TasksResourceTest extends MarathonSpec with GivenWhenThen with Matchers wi
     noMoreInteractions(taskKiller)
   }
 
-  test("killTasks with scale and wipe fails") {
+  test("killTasks with mesosphere.marathon.scale and wipe fails") {
     Given("a request")
     val app1 = "/my/app-1".toRootPath
     val taskId1 = Task.Id.forRunSpec(app1).idString
     val body = s"""{"ids": ["$taskId1"]}"""
     val bodyBytes = body.toCharArray.map(_.toByte)
 
-    When("we ask to scale AND wipe")
+    When("we ask to mesosphere.marathon.scale AND wipe")
     val exception = intercept[BadRequestException] {
       taskResource.killTasks(scale = true, force = false, wipe = true, body = bodyBytes, auth.request)
     }
 
     Then("an exception should occur")
-    exception.getMessage shouldEqual "You cannot use scale and wipe at the same time."
+    exception.getMessage shouldEqual "You cannot use mesosphere.marathon.scale and wipe at the same time."
   }
 
   // FIXME (3456): breaks – why?

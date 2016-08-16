@@ -59,19 +59,6 @@ object MarathonBuild extends Build {
     .configs(IntegrationTest, Benchmark)
     .enablePlugins(BuildInfoPlugin)
     .dependsOn(pluginInterface)
-    // run mesos-simulation/test:test when running test
-    .settings((test in Test) <<= (test in Test) dependsOn (test in Test in LocalProject("mesos-simulation")))
-
-  lazy val mesosSimulation: Project = Project(
-    id = "mesos-simulation",
-    base = file("mesos-simulation"),
-    settings = baseSettings ++
-      formatSettings ++
-      scalaStyleSettings ++
-      testSettings ++
-      integrationTestSettings ++
-      benchmarkSettings
-    ).dependsOn(root % "compile->compile; test->test").configs(IntegrationTest, Benchmark)
 
   /**
    * Determine scala test runner output. `-e` for reporting on standard error.

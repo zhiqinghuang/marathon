@@ -1,14 +1,13 @@
-package mesosphere.mesos.simulation
+package mesosphere.marathon.simulation
 
 import java.util.UUID
 
-import akka.actor.{ Actor, ActorRef, Cancellable, Props }
+import akka.actor.{Actor, ActorRef, Cancellable, Props}
 import akka.event.LoggingReceive
-import mesosphere.mesos.simulation.DriverActor._
-import mesosphere.mesos.simulation.SchedulerActor.ResourceOffers
 import org.apache.mesos.Protos._
 import org.apache.mesos.SchedulerDriver
 import org.slf4j.LoggerFactory
+import mesosphere.marathon.simulation.SchedulerActor.ResourceOffers
 
 import scala.collection.JavaConversions._
 import scala.concurrent.duration._
@@ -63,6 +62,8 @@ object DriverActor {
 }
 
 class DriverActor(schedulerProps: Props) extends Actor {
+  import DriverActor._
+
   private val log = LoggerFactory.getLogger(getClass)
 
   private[this] val numberOfOffersPerCycle: Int = 10

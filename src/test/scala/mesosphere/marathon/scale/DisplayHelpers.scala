@@ -1,4 +1,4 @@
-package mesosphere.mesos.scale
+package mesosphere.marathon.scale
 
 object DisplayHelpers {
   /** Formatting function. The first parameter is the input string and the second parameter the desired length. */

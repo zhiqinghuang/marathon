@@ -80,7 +80,7 @@ Below we see Marathon running three applications, each scaled to a different num
   <img src="{{ site.baseurl}}/img/marathon1.png" width="420" height="269" alt="">
 </p>
 
-As the website gains traction, we decide to scale out the Search service and our Rails-based application.
+As the website gains traction, we decide to mesosphere.marathon.scale out the Search service and our Rails-based application.
 
 We use the Marathon REST API call to to add more instances. Marathon will take care of placing the new containers on machines with spare capacity, honoring the constraints we previously set. We can see the containers are dynamically placed:
 

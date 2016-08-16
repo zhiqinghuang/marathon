@@ -82,7 +82,7 @@ class TaskReplaceActorTest
     expectTerminated(ref)
   }
 
-  test("Replace and scale down from more than new minCapacity") {
+  test("Replace and mesosphere.marathon.scale down from more than new minCapacity") {
     val f = new Fixture
     val app = AppDefinition(id = "/myApp".toPath, instances = 2, upgradeStrategy = UpgradeStrategy(minimumHealthCapacity = 1.0))
     val taskA = MarathonTestHelper.runningTask(Task.Id.forRunSpec(app.id).idString)

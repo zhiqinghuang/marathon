@@ -1,15 +1,15 @@
-## DELETE `/v2/apps/{app_id}/tasks?host={host}&scale={true|false}`
+## DELETE `/v2/apps/{app_id}/tasks?host={host}&mesosphere.marathon.scale={true|false}`
 
 Kill tasks that belong to the application `app_id`, optionally filtered by the task's `host`.
 
-The query parameters `host` and `scale` are both optional.  If `host` is specified, only tasks running on the supplied slave are killed.  If `scale=true` is specified, then the application is scaled down by the number of killed tasks.  The `scale` parameter defaults to `false`.
+The query parameters `host` and `mesosphere.marathon.scale` are both optional.  If `host` is specified, only tasks running on the supplied slave are killed.  If `mesosphere.marathon.scale=true` is specified, then the application is scaled down by the number of killed tasks.  The `mesosphere.marathon.scale` parameter defaults to `false`.
 
 ### Example
 
 **Request:**
 
 ```
-DELETE /v2/apps/myApp/tasks?host=mesos.vm&scale=false HTTP/1.1
+DELETE /v2/apps/myApp/tasks?host=mesos.vm&mesosphere.marathon.scale=false HTTP/1.1
 Accept: application/json
 Accept-Encoding: gzip, deflate, compress
 Content-Length: 0

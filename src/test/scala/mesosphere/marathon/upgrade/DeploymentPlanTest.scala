@@ -149,7 +149,7 @@ class DeploymentPlanTest extends MarathonSpec with Matchers with GivenWhenThen w
 
   test("when updating a group with dependencies, the correct order is computed") {
 
-    Given("Two application updates with command and scale changes")
+    Given("Two application updates with command and mesosphere.marathon.scale changes")
     val mongoId = "/test/database/mongo".toPath
     val serviceId = "/test/service/srv1".toPath
     val strategy = UpgradeStrategy(0.75)
@@ -217,7 +217,7 @@ class DeploymentPlanTest extends MarathonSpec with Matchers with GivenWhenThen w
   }
 
   test("when updating apps without dependencies, the restarts are executed in the same step") {
-    Given("Two application updates with command and scale changes")
+    Given("Two application updates with command and mesosphere.marathon.scale changes")
     val mongoId = "/test/database/mongo".toPath
     val serviceId = "/test/service/srv1".toPath
     val strategy = UpgradeStrategy(0.75)
@@ -251,7 +251,7 @@ class DeploymentPlanTest extends MarathonSpec with Matchers with GivenWhenThen w
   }
 
   test("when updating a group with dependent and independent applications, the correct order is computed") {
-    Given("application updates with command and scale changes")
+    Given("application updates with command and mesosphere.marathon.scale changes")
     val mongoId = "/test/database/mongo".toPath
     val serviceId = "/test/service/srv1".toPath
     val appId = "/test/independent/app".toPath
@@ -404,7 +404,7 @@ class DeploymentPlanTest extends MarathonSpec with Matchers with GivenWhenThen w
     Given("All options are supplied and we have a valid group change")
     val f = new Fixture()
 
-    When("We create a scale deployment")
+    When("We create a mesosphere.marathon.scale deployment")
     val app = f.validResident.copy(instances = 123)
     val group = f.group.copy(apps = Map(app.id -> app))
     val plan = DeploymentPlan(f.group, group)
@@ -433,7 +433,7 @@ class DeploymentPlanTest extends MarathonSpec with Matchers with GivenWhenThen w
       internalStorageBackend = Some(TwitterZk.StoreName),
       maxZkNodeSize = Some(1)))
 
-    When("We create a scale deployment")
+    When("We create a mesosphere.marathon.scale deployment")
     val app = f.validResident.copy(instances = 123)
     val group = f.group.copy(apps = Map(app.id -> app))
     val plan = DeploymentPlan(f.group, group)

@@ -96,11 +96,11 @@ class MarathonSchedulerService @Inject() (
   val reconciliationInterval =
     Duration(config.reconciliationInterval(), MILLISECONDS)
 
-  // Time to wait before trying to scale apps after driver starts
+  // Time to wait before trying to mesosphere.marathon.scale apps after driver starts
   val scaleAppsInitialDelay =
     Duration(config.scaleAppsInitialDelay(), MILLISECONDS)
 
-  // Interval between attempts to scale apps
+  // Interval between attempts to mesosphere.marathon.scale apps
   val scaleAppsInterval =
     Duration(config.scaleAppsInterval(), MILLISECONDS)
 

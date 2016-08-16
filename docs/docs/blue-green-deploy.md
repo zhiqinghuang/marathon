@@ -36,7 +36,7 @@ We will replace the current app version (BLUE) with a new version (GREEN).
 2. Scale GREEN app instances by 1 or more. Initially (starting from 0 instances), set the number of app instances to the minimum required to serve traffic. Remember, no traffic will arrive yet: we haven't registered at the load balancer.
 
     ```sh
-    # scale green
+    # mesosphere.marathon.scale green
     dcos marathon app update /green-myapp instances=1
     ```
 
@@ -62,11 +62,11 @@ We will replace the current app version (BLUE) with a new version (GREEN).
 
 8. Wait until the task instances from the BLUE app have 0 pending operations. Use the metrics endpoint in the application to determine the number of pending operations.
 
-9. Once all operations are complete from the BLUE tasks, kill and scale the BLUE app using [the API] (https://mesosphere.github.io/marathon/docs/rest-api.html#post-v2-tasks-delete). In the snippet below, ``<hosturl>`` is the hostname of your master node prefixed with ``http://``.
+9. Once all operations are complete from the BLUE tasks, kill and mesosphere.marathon.scale the BLUE app using [the API] (https://mesosphere.github.io/marathon/docs/rest-api.html#post-v2-tasks-delete). In the snippet below, ``<hosturl>`` is the hostname of your master node prefixed with ``http://``.
 
     ```sh
-    # kill and scale blue tasks
-    echo "{\"ids\":[\"<task_id>\"]}" | curl -H "Content-Type: application/json" -X POST -d @- <hosturl>/marathon/v2/tasks/delete?scale=true
+    # kill and mesosphere.marathon.scale blue tasks
+    echo "{\"ids\":[\"<task_id>\"]}" | curl -H "Content-Type: application/json" -X POST -d @- <hosturl>/marathon/v2/tasks/delete?mesosphere.marathon.scale=true
     ```
 
     This Marathon operation will remove specific instances (the ones with 0 pending operations) and prevent them from being restarted.

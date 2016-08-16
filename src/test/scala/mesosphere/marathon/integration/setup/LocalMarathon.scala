@@ -23,6 +23,7 @@ import org.scalatest.concurrent.PatienceConfiguration.Timeout
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{BeforeAndAfterAll, Suite}
 import play.api.libs.json.Json
+import mesosphere.marathon.simulation.MarathonWithSimulatedMesos
 import spray.json.{JsObject, JsString, JsValue}
 
 import scala.annotation.tailrec
@@ -75,8 +76,14 @@ case class LocalMarathon(
     "min_revive_offers_interval" -> "100"
   ) ++ conf
 
+  val args = config.flatMap { case (k, v) => Seq(s"--$k", v) }(collection.breakOut)
+
   private var closing = false
-  lazy val marathon = new MarathonApp(config.flatMap { case (k, v) => Seq(s"--$k", v) }(collection.breakOut))
+  lazy val marathon = if (useSimulator) {
+    new MarathonWithSimulatedMesos(args)
+  } else {
+    new MarathonApp(args)
+  }
 
   private val thread = new Thread(new Runnable {
     override def run(): Unit = {
@@ -123,6 +130,7 @@ trait MarathonTest extends BeforeAndAfterAll { this: Suite with StrictLogging wi
   def marathon: MarathonFacade
   def mesos: MesosFacade
   val testBasePath: PathId
+  val useSimulatedMesos: Boolean = false
 
   private val appProxyIds = Lock(mutable.ListBuffer.empty[String])
 
@@ -131,7 +139,7 @@ trait MarathonTest extends BeforeAndAfterAll { this: Suite with StrictLogging wi
   protected[setup] implicit val system: ActorSystem
   protected[setup] implicit val ctx: ExecutionContext
 
-  private val events = new ConcurrentLinkedQueue[CallbackEvent]()
+  protected val events = new ConcurrentLinkedQueue[CallbackEvent]()
   protected[setup] lazy val callbackEndpoint = {
 
     val route = {
@@ -377,7 +385,8 @@ trait LocalMarathonTest
 
   lazy val marathonServer = LocalMarathon(autoStart = false, masterUrl = mesosMasterUrl,
     zkUrl = s"zk://${zkServer.connectUri}/marathon",
-    conf = marathonArgs)
+    conf = marathonArgs,
+    useSimulator = useSimulatedMesos)
   lazy val marathonUrl = s"http://localhost:${marathonServer.httpPort}"
 
   val testBasePath: PathId = PathId("/")

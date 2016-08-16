@@ -180,19 +180,19 @@ class MarathonFacade(url: String, baseGroup: PathId, waitTime: Duration = 30.sec
   def killAllTasks(appId: PathId, scale: Boolean = false): RestResult[ITListTasks] = {
     requireInBaseGroup(appId)
     val pipeline = marathonSendReceive ~> read[ITListTasks]
-    result(pipeline(Delete(s"$url/v2/apps$appId/tasks?scale=$scale")), waitTime)
+    result(pipeline(Delete(s"$url/v2/apps$appId/tasks?mesosphere.marathon.scale=$scale")), waitTime)
   }
 
   def killAllTasksAndScale(appId: PathId): RestResult[ITDeploymentPlan] = {
     requireInBaseGroup(appId)
     val pipeline = marathonSendReceive ~> read[ITDeploymentPlan]
-    result(pipeline(Delete(s"$url/v2/apps$appId/tasks?scale=true")), waitTime)
+    result(pipeline(Delete(s"$url/v2/apps$appId/tasks?mesosphere.marathon.scale=true")), waitTime)
   }
 
   def killTask(appId: PathId, taskId: String, scale: Boolean = false): RestResult[HttpResponse] = {
     requireInBaseGroup(appId)
     val pipeline = marathonSendReceive ~> responseResult
-    result(pipeline(Delete(s"$url/v2/apps$appId/tasks/$taskId?scale=$scale")), waitTime)
+    result(pipeline(Delete(s"$url/v2/apps$appId/tasks/$taskId?mesosphere.marathon.scale=$scale")), waitTime)
   }
 
   //group resource -------------------------------------------

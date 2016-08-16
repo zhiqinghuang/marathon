@@ -1,4 +1,4 @@
-package mesosphere.mesos.simulation
+package mesosphere.marathon.simulation
 
 import javax.inject.Inject
 

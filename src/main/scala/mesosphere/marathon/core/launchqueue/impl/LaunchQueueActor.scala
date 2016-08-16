@@ -207,7 +207,7 @@ private[impl] class LaunchQueueActor(
   override def supervisorStrategy: SupervisorStrategy = OneForOneStrategy() {
     case NonFatal(e) =>
       // We periodically check if scaling is needed, so we should eventually recover.
-      // TODO: Spead up recovery, e.g. by initiating a scale check.
+      // TODO: Spead up recovery, e.g. by initiating a mesosphere.marathon.scale check.
       // Just restarting an AppTaskLauncherActor will potentially lead to starting too many tasks.
       Stop
     case m: Any => SupervisorStrategy.defaultDecider(m)

@@ -146,7 +146,7 @@ DOCKER_OPTIONS=(
     -v "$IVY2_DIR:/root/.ivy2"
     -v "$TARGET_DIRS/main:/marathon/target"
     -v "$TARGET_DIRS/project:/marathon/project/target"
-    -v "$TARGET_DIRS/mesos-simulation:/marathon/mesos-simulation/target"
+    -v "$TARGET_DIRS/mesos-mesosphere.marathon.simulation:/marathon/mesos-mesosphere.marathon.simulation/target"
     -v "/etc/hosts:/etc/hosts" # otherwise localhost cannot be resolved from inside the container when run with host net
     --entrypoint /bin/bash
     -i
@@ -157,7 +157,7 @@ fi
 
 DOCKER_IMAGE="marathon-buildbase:$BUILD_ID"
 
-DOCKER_CMD='sbt -Dsbt.log.format=false "; test; integration:test; mesos-simulation/test; mesos-simulation/integration:test; mesos-simulation/test:runMain mesosphere.mesos.scale.DisplayAppScalingResults"'
+DOCKER_CMD='sbt -Dsbt.log.format=false "; test; integration:test; mesos-mesosphere.marathon.simulation/test; test:runMain mesosphere.mesos.mesosphere.marathon.scale.DisplayAppScalingResults"'
 
 DOCKER_ARGS=( ${DOCKER_OPTIONS[@]} "$DOCKER_IMAGE" -c "$DOCKER_CMD" )
 

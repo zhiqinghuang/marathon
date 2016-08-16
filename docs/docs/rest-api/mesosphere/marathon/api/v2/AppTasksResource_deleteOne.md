@@ -1,8 +1,8 @@
-## DELETE `/v2/apps/{app_id}/tasks/{task_id}?scale={true|false}`
+## DELETE `/v2/apps/{app_id}/tasks/{task_id}?mesosphere.marathon.scale={true|false}`
 
 Kill the task with ID `task_id` that belongs to the application `app_id`.
 
-The query parameter `scale` is optional.  If `scale=true` is specified, then the application is scaled down one if the supplied `task_id` exists.  The `scale` parameter defaults to `false`.
+The query parameter `mesosphere.marathon.scale` is optional.  If `mesosphere.marathon.scale=true` is specified, then the application is scaled down one if the supplied `task_id` exists.  The `mesosphere.marathon.scale` parameter defaults to `false`.
 
 ### Example
 

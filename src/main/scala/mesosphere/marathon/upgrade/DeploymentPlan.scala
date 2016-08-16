@@ -286,9 +286,9 @@ object DeploymentPlan {
 
     // 3. For each app in each dependency class,
     //
-    //      A. If this app is new, scale to the target number of instances.
+    //      A. If this app is new, mesosphere.marathon.scale to the target number of instances.
     //
-    //      B. If this is a scale change only, scale to the target number of
+    //      B. If this is a mesosphere.marathon.scale change only, mesosphere.marathon.scale to the target number of
     //         instances.
     //
     //      C. Otherwise, if this is an app update:

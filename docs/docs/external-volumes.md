@@ -72,7 +72,7 @@ Install DC/OS using the [CLI][1] or [Advanced][2] installation method with these
 
 Apps that use external volumes can only be scaled to a single instance because a volume can only attach to a single task at a time. This may change in a future release.
 
-If you scale your app down to 0 instances, the volume is detached from the agent where it was mounted, but it is not deleted. If you scale your app up again, the data that was associated with it is still be available.
+If you mesosphere.marathon.scale your app down to 0 instances, the volume is detached from the agent where it was mounted, but it is not deleted. If you mesosphere.marathon.scale your app up again, the data that was associated with it is still be available.
 
 ## Create an Application with External Volumes
 

@@ -53,7 +53,7 @@ class ScaleAppUpdateStepImpl @Inject() (
       val state = ("TASK_" + task.status.taskStatus).toUpperCase
       val reason = task.mesosStatus.fold("")(status =>
         if (status.hasReason) status.getReason.toString else "")
-      log.info(s"initiating a scale check for app [$appId] due to [$taskId] $state $reason")
+      log.info(s"initiating a mesosphere.marathon.scale check for app [$appId] due to [$taskId] $state $reason")
       log.info("schedulerActor: {}", schedulerActor)
       schedulerActor ! ScaleApp(task.taskId.runSpecId)
     }
