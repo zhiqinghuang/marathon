@@ -24,7 +24,7 @@ class TaskLostIntegrationTest extends IntegrationFunSuite
     "task_lost_expunge_interval" -> "1000"
   )
 
-  after {
+  before {
     cleanUp()
     mesosCluster.agents.tail.head.stop()
     mesosCluster.masters.tail.head.stop()

@@ -71,6 +71,13 @@ class ZkPersistenceStoreTest extends AkkaUnitTest
     new ZkPersistenceStore(client, Duration.Inf)
   }
 
+  def authStore: ZkPersistenceStore = {
+    val root = UUID.randomUUID().toString
+    val client = zkClient(namespace = Some(root), username = Some("user"), password = Some("password"))
+    implicit val metrics = new Metrics(new MetricRegistry)
+    new ZkPersistenceStore(client, Duration.Inf)
+  }
+
   behave like basicPersistenceStore("ZookeeperPersistenceStore", defaultStore)
 
   it should {
@@ -89,5 +96,7 @@ class ZkPersistenceStoreTest extends AkkaUnitTest
       newStore.storageVersion().futureValue.value should equal(version)
     }
   }
+
+  behave like basicPersistenceStore("AuthorizedZookeeperPersistenceStore", defaultStore)
 }
 

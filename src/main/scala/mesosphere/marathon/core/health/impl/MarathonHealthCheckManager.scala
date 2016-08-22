@@ -141,8 +141,9 @@ class MarathonHealthCheckManager(
           appRepository.getVersion(app.id, version.toOffsetDateTime) map {
             case None =>
               // FIXME: If the app version of the task is not available anymore, no health check is started.
-              // We generated a new app version for every mesosphere.marathon.scale change. If maxVersions is configured, we
-              // throw away old versions such that we may not have the app configuration of all tasks available anymore.
+              // We generated a new app version for every mesosphere.marathon.scale change.
+              // If maxVersions is configured, we throw away old versions such that we may not have the app
+              // configuration of all tasks available anymore.
               log.warn(
                 s"Cannot find health check configuration for [$appId] and version [$version], " +
                   "using most recent one.")

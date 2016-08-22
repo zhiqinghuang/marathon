@@ -5,8 +5,8 @@ import mesosphere.marathon.api.v2.json.AppUpdate
 import mesosphere.marathon.integration.facades.ITDeploymentResult
 import mesosphere.marathon.integration.facades.MarathonFacade._
 import mesosphere.marathon.integration.setup._
-import mesosphere.marathon.state.{AppDefinition, PathId}
-import org.scalatest.{BeforeAndAfter, GivenWhenThen, Matchers}
+import mesosphere.marathon.state.{ AppDefinition, PathId }
+import org.scalatest.{ BeforeAndAfter, GivenWhenThen, Matchers }
 import org.slf4j.LoggerFactory
 import play.api.libs.json._
 
@@ -32,7 +32,8 @@ class SingleAppScalingTest
   private[this] val log = LoggerFactory.getLogger(getClass)
   val maxTasksPerOffer = Option(System.getenv("MARATHON_MAX_TASKS_PER_OFFER")).getOrElse("1")
 
-  override val marathonArgs: Map[String, String] = Map("max_tasks_per_offer" -> maxTasksPerOffer,
+  override val marathonArgs: Map[String, String] = Map(
+    "max_tasks_per_offer" -> maxTasksPerOffer,
     "task_launch_timeout" -> "20000",
     "task_launch_confirm_timeout" -> "1000")
 

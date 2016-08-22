@@ -3,32 +3,32 @@ package mesosphere.marathon.integration.setup
 import java.io.File
 import java.nio.file.Files
 import java.util.UUID
-import java.util.concurrent.{ConcurrentLinkedQueue, Semaphore}
+import java.util.concurrent.{ ConcurrentLinkedQueue, Semaphore }
 
-import akka.actor.{ActorSystem, Scheduler}
+import akka.actor.{ ActorSystem, Scheduler }
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.client.RequestBuilding.Get
-import akka.http.scaladsl.model.{HttpResponse, StatusCodes}
-import akka.stream.{ActorMaterializer, Materializer}
+import akka.http.scaladsl.model.{ HttpResponse, StatusCodes }
+import akka.stream.{ ActorMaterializer, Materializer }
 import com.typesafe.scalalogging.StrictLogging
 import mesosphere.marathon.MarathonApp
 import mesosphere.marathon.core.health.HealthCheck
-import mesosphere.marathon.integration.facades.{ITDeploymentResult, ITEnrichedTask, MarathonFacade, MesosFacade}
-import mesosphere.marathon.state.{AppDefinition, Container, DockerVolume, PathId}
-import mesosphere.marathon.util.{Lock, Retry}
+import mesosphere.marathon.integration.facades.{ ITDeploymentResult, ITEnrichedTask, MarathonFacade, MesosFacade }
+import mesosphere.marathon.state.{ AppDefinition, Container, DockerVolume, PathId }
+import mesosphere.marathon.util.{ Lock, Retry }
 import mesosphere.util.PortAllocator
 import org.apache.commons.io.FileUtils
 import org.apache.mesos.Protos
 import org.scalatest.concurrent.PatienceConfiguration.Timeout
 import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.{BeforeAndAfterAll, Suite}
+import org.scalatest.{ BeforeAndAfterAll, Suite }
 import play.api.libs.json.Json
 import mesosphere.marathon.simulation.MarathonWithSimulatedMesos
-import spray.json.{JsObject, JsString, JsValue}
+import spray.json.{ JsObject, JsString, JsValue }
 
 import scala.annotation.tailrec
 import scala.concurrent.duration._
-import scala.concurrent.{Await, ExecutionContext}
+import scala.concurrent.{ Await, ExecutionContext }
 import scala.util.Try
 import scala.collection.mutable
 import scala.sys.process.Process
@@ -140,8 +140,8 @@ trait MarathonTest extends BeforeAndAfterAll { this: Suite with StrictLogging wi
   protected[setup] implicit val ctx: ExecutionContext
 
   protected val events = new ConcurrentLinkedQueue[CallbackEvent]()
+  protected val healthChecks = Lock(mutable.ListBuffer.empty[IntegrationHealthCheck])
   protected[setup] lazy val callbackEndpoint = {
-
     val route = {
       import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
       import akka.http.scaladsl.server.Directives._
@@ -159,6 +159,22 @@ trait MarathonTest extends BeforeAndAfterAll { this: Suite with StrictLogging wi
           case s: JsValue => s.toString
         }))
         complete(HttpResponse(status = StatusCodes.OK))
+      } ~ get {
+        path("health" / Segment / Segment / IntNumber) { (path, versionId, port) =>
+          import PathId._
+          val appId = path.toRootPath
+          def instance = healthChecks(_.find { c => c.appId == appId && c.versionId == versionId && c.port == port })
+          def definition = healthChecks(_.find { c => c.appId == appId && c.versionId == versionId && c.port == 0 })
+          val state = instance.orElse(definition).fold(true)(_.healthy)
+          if (state) {
+            complete(HttpResponse(status = StatusCodes.OK))
+          } else {
+            complete(HttpResponse(status = StatusCodes.InternalServerError))
+          }
+        } ~ path(Remaining) { path =>
+          require(false, s"$path was unmatched!")
+          complete(HttpResponse(status = StatusCodes.InternalServerError))
+        }
       }
     }
     val port = PortAllocator.ephemeralPort()
@@ -171,14 +187,19 @@ trait MarathonTest extends BeforeAndAfterAll { this: Suite with StrictLogging wi
   abstract override def afterAll(): Unit = {
     Try(marathon.unsubscribe(s"http://localhost:${callbackEndpoint.localAddress.getPort}"))
     callbackEndpoint.unbind().futureValue
-    val PIDRE =  """^\s*(\d+)\s+(\S*)$""".r
-    val pids = Process("jps -lv").!!.split("\n").collect {
+    killAppProxies()
+    super.afterAll()
+  }
+
+  def killAppProxies(): Unit = {
+    val PIDRE = """^\s*(\d+)\s+(.*)$""".r
+    val allJavaIds = Process("jps -lv").!!.split("\n")
+    val pids = allJavaIds.collect {
       case PIDRE(pid, exec) if appProxyIds(_.exists(exec.contains)) => pid
     }
     if (pids.nonEmpty) {
       Process(s"kill -9 ${pids.mkString(" ")}").run().exitValue()
     }
-    super.afterAll()
   }
 
   implicit class PathIdTestHelper(path: String) {
@@ -192,11 +213,11 @@ trait MarathonTest extends BeforeAndAfterAll { this: Suite with StrictLogging wi
     val main = classOf[AppMock].getName
     val id = UUID.randomUUID.toString
     appProxyIds(_ += id)
-    s"""$javaExecutable -Xmx64m -classpath -DappProxyId=$id $classPath $main"""
+    s"""$javaExecutable -Xmx64m -DappProxyId=$id -classpath $classPath $main"""
   }
 
   lazy val appProxyHealthChecks = Set(
-    HealthCheck(gracePeriod = 20.second, interval = 1.second, maxConsecutiveFailures = 10))
+    HealthCheck(gracePeriod = 5.second, interval = 0.5.second, maxConsecutiveFailures = 2))
 
   def appProxy(appId: PathId, versionId: String, instances: Int,
     withHealth: Boolean = true, dependencies: Set[PathId] = Set.empty): AppDefinition = {
@@ -215,7 +236,7 @@ trait MarathonTest extends BeforeAndAfterAll { this: Suite with StrictLogging wi
       file.getAbsolutePath
     }
     val cmd = Some(s"""echo APP PROXY $$MESOS_TASK_ID RUNNING; $appProxyMainInvocation """ +
-      s"""$appId $versionId $marathonUrl/health$appId/$versionId""")
+      s"""$appId $versionId http://127.0.0.1:${callbackEndpoint.localAddress.getPort}/health$appId/$versionId""")
 
     AppDefinition(
       id = appId,
@@ -290,12 +311,20 @@ trait MarathonTest extends BeforeAndAfterAll { this: Suite with StrictLogging wi
     require(apps.value.isEmpty, s"apps weren't empty: ${apps.entityPrettyJsonString}")
     val groups = marathon.listGroupsInBaseGroup
     require(groups.value.isEmpty, s"groups weren't empty: ${groups.entityPrettyJsonString}")
+    events.clear()
+    healthChecks(_.clear())
+    killAppProxies()
+    if (withSubscribers) marathon.listSubscribers.value.urls.foreach(marathon.unsubscribe)
 
     logger.info("CLEAN UP finished !!!!!!!!!")
   }
 
   def appProxyCheck(appId: PathId, versionId: String, state: Boolean): IntegrationHealthCheck = {
     val check = new IntegrationHealthCheck(appId, versionId, 0, state)
+    healthChecks { checks =>
+      checks.filter(c => c.appId == appId && c.versionId == versionId).foreach(checks -= _)
+      checks += check
+    }
     check
   }
 
@@ -412,4 +441,30 @@ trait EmbeddedMarathonTest extends ZookeeperServerTest with MesosLocalTest with 
 
 trait EmbeddedMarathonMesosClusterTest extends ZookeeperServerTest with MesosClusterTest with LocalMarathonTest {
   this: Suite with StrictLogging =>
+}
+
+trait MarathonClusterTest extends ZookeeperServerTest with MesosLocalTest with LocalMarathonTest {
+  this: Suite with StrictLogging =>
+
+  val numAdditionalMarathons = 0
+  lazy val additionalMarathons = 0.until(numAdditionalMarathons).map { _ =>
+    LocalMarathon(autoStart = false, masterUrl = mesosMasterUrl,
+      zkUrl = s"zk://${zkServer.connectUri}/marathon",
+      conf = marathonArgs,
+      useSimulator = useSimulatedMesos)
+  }
+  lazy val marathonFacades = marathon +: additionalMarathons.map { m =>
+    new MarathonFacade(s"http://localhost:${m.httpPort}", testBasePath)
+  }
+
+  override def beforeAll(): Unit = {
+    super.beforeAll()
+    additionalMarathons.foreach(_.start())
+  }
+
+  override def afterAll(): Unit = {
+    additionalMarathons.foreach(_.close())
+    super.afterAll()
+  }
+
 }

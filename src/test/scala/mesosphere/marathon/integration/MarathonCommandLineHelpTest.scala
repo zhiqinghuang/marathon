@@ -1,25 +1,23 @@
 package mesosphere.marathon.integration
 
-import java.io.File
+import mesosphere.marathon.MarathonApp
+import mesosphere.marathon.integration.setup.{ ExitDisabledTest, IntegrationFunSuite }
+import org.scalatest.{ BeforeAndAfter, GivenWhenThen, Matchers }
 
-import mesosphere.marathon.integration.setup.{ ProcessKeeper, IntegrationFunSuite }
-import org.scalatest.{ GivenWhenThen, BeforeAndAfter, Matchers }
+import scala.collection.immutable.Seq
 
 class MarathonCommandLineHelpTest
     extends IntegrationFunSuite
+    with ExitDisabledTest
     with Matchers
     with BeforeAndAfter
     with GivenWhenThen {
 
-  after {
-    ProcessKeeper.stopAllProcesses()
-  }
-
   test("marathon --help shouldn't crash") {
-    val cwd = new File(".")
-    val process = ProcessKeeper.startMarathon(
-      cwd, env = Map.empty, arguments = List("--help"),
-      startupLine = "Show help message")
-    assert(process.exitValue() == 0)
+    intercept[IllegalStateException] {
+      val app = new MarathonApp(Seq("--help"))
+      app.start()
+    }.getMessage should equal("Attempted to call exit with code: 0")
+    exitsCalled(_.exists(_ == 0)) should be(true)
   }
 }

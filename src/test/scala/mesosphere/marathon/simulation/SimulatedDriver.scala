@@ -3,8 +3,8 @@ package mesosphere.marathon.simulation
 import java.util
 import java.util.Collections
 
-import akka.actor.{ActorRef, ActorSystem, Props}
-import com.typesafe.config.{Config, ConfigFactory}
+import akka.actor.{ ActorRef, ActorSystem, Props }
+import com.typesafe.config.{ Config, ConfigFactory }
 import org.apache.mesos.Protos._
 import org.apache.mesos.SchedulerDriver
 import org.slf4j.LoggerFactory

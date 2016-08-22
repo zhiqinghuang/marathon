@@ -1,20 +1,18 @@
 package mesosphere.marathon.integration
 
-import mesosphere.marathon.integration.facades.MarathonFacade
+import com.typesafe.scalalogging.StrictLogging
 import mesosphere.marathon.integration.setup._
-import mesosphere.marathon.state.PathId
 import org.apache.zookeeper.data.Stat
 import org.apache.zookeeper.{ WatchedEvent, Watcher, ZooKeeper }
 import org.scalatest.{ GivenWhenThen, Matchers }
 
 import scala.concurrent.duration._
-import scala.concurrent.{ Await, Future }
-import scala.util.Try
 
 class LeaderIntegrationTest extends IntegrationFunSuite
-    with MarathonClusterIntegrationTest
+    with MarathonClusterTest
     with GivenWhenThen
-    with Matchers {
+    with Matchers
+    with StrictLogging {
 
   test("all nodes return the same leader") {
     Given("a leader has been elected")
@@ -88,19 +86,19 @@ class LeaderIntegrationTest extends IntegrationFunSuite
   test("the leader sets a tombstone for the old twitter commons leader election") {
     def checkTombstone(): Unit = {
       val watcher = new Watcher { override def process(event: WatchedEvent): Unit = println(event) }
-      val zooKeeper = new ZooKeeper(config.zkHostAndPort, 30 * 1000, watcher)
+      val zooKeeper = new ZooKeeper(zkServer.connectUri, 30 * 1000, watcher)
 
       try {
         Then("there is a tombstone")
         var stat: Option[Stat] = None
         WaitTestSupport.waitUntil("the tombstone is created", 30.seconds) {
-          stat = Option(zooKeeper.exists(config.zkPath + "/leader/member_-00000000", false))
+          stat = Option(zooKeeper.exists("/marathon/leader/member_-00000000", false))
           stat.isDefined
         }
 
         And("the tombstone points to the leader")
         val apiLeader: String = marathon.leader().value.leader
-        val tombstoneData = zooKeeper.getData(config.zkPath + "/leader/member_-00000000", false, stat.get)
+        val tombstoneData = zooKeeper.getData("/marathon/leader/member_-00000000", false, stat.get)
         new String(tombstoneData, "UTF-8") should equal(apiLeader)
       } finally {
         zooKeeper.close()
@@ -125,10 +123,11 @@ class LeaderIntegrationTest extends IntegrationFunSuite
 
     checkTombstone()
   }
-
+  /*
   // TODO(jasongilanfarr) Marathon will kill itself in this test so this doesn't actually work and needs to be revisited.
   ignore("the tombstone stops old instances from becoming leader") {
     When("Starting an instance with --leader_election_backend")
+
     val parameters = List(
       "--master", config.master,
       "--leader_election_backend", "twitter_commons"
@@ -168,15 +167,15 @@ class LeaderIntegrationTest extends IntegrationFunSuite
 
       Thread.sleep(random.nextInt(10) * 100L)
     }
-  }
-
-  ignore("commit suicide if the zk connection is dropped") {
+  }*/
+  /*
+  test("commit suicide if the zk connection is dropped") {
     // FIXME (gkleiman): investigate why this test fails (https://github.com/mesosphere/marathon/issues/3566)
     Given("a leader")
     WaitTestSupport.waitUntil("a leader has been elected", 30.seconds) { marathon.leader().code == 200 }
 
     When("ZooKeeper dies")
-    ProcessKeeper.stopProcess("zookeeper")
+    zkServer.stop()
 
     Then("Marathon commits suicide")
     val exitValueFuture = Future {
@@ -186,6 +185,7 @@ class LeaderIntegrationTest extends IntegrationFunSuite
     Await.result(exitValueFuture, 30.seconds) should be > 0
 
     When("Zookeeper starts again")
+    zkServer.start()
     startZooKeeperProcess(wipeWorkDir = false)
     // Marathon is not running, but we want ProcessKeeper to notice that
     ProcessKeeper.stopProcess(s"marathon_${config.marathonBasePort}")
@@ -196,4 +196,5 @@ class LeaderIntegrationTest extends IntegrationFunSuite
       Try(marathon.leader().code).getOrElse(500) == 200
     }
   }
+*/
 }

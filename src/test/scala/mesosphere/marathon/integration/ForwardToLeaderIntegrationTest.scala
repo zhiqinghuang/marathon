@@ -15,6 +15,7 @@ import scala.concurrent.duration.Duration
 /**
   * Tests forwarding requests.
   */
+
 class ForwardToLeaderIntegrationTest extends IntegrationFunSuite with BeforeAndAfter {
   // ports to bind to
   private[this] val ports = 10000 to 20000

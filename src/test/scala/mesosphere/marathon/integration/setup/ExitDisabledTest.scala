@@ -2,12 +2,16 @@ package mesosphere.marathon.integration.setup
 
 import java.security.Permission
 
+import mesosphere.marathon.util.Lock
 import org.scalatest.{ BeforeAndAfterAll, Suite }
+
+import scala.collection.mutable
 
 /**
   * Mixin that will disable System.exit while the suite is running.
   */
 trait ExitDisabledTest extends BeforeAndAfterAll { self: Suite =>
+  var exitsCalled = Lock(mutable.ListBuffer.empty[Int])
   private var securityManager = Option.empty[SecurityManager]
   private var previousManager = Option.empty[SecurityManager]
 
@@ -22,15 +26,15 @@ trait ExitDisabledTest extends BeforeAndAfterAll { self: Suite =>
 
   override def afterAll(): Unit = {
     System.setSecurityManager(previousManager.orNull)
+    exitsCalled(_.clear())
     super.afterAll()
   }
 
   // scalastyle:off
   class ExitDisabledSecurityManager() extends SecurityManager {
     override def checkExit(i: Int): Unit = {
-      if (!Thread.currentThread().getStackTrace.exists(_.getClassName.contains("ScalaTestRunner"))) {
-        throw new IllegalStateException(s"Attempted to call exit with code: $i")
-      }
+      exitsCalled(_ += i)
+      throw new IllegalStateException(s"Attempted to call exit with code: $i")
     }
 
     override def checkPermission(permission: Permission): Unit = {

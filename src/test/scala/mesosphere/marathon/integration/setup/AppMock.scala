@@ -56,6 +56,7 @@ object AppMock {
     val appId = args(0)
     val version = args(1)
     val url = args(2) + "/" + port
+
     new AppMock(appId, version, url).start(port)
   }
 }

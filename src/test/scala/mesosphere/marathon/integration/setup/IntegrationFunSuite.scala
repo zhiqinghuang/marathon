@@ -6,6 +6,7 @@ import akka.actor.ActorSystem
 import mesosphere.marathon.IntegrationTest
 import mesosphere.marathon.state.PathId
 import org.joda.time.DateTime
+import org.scalactic.source.Position
 import org.scalatest._
 
 import scala.collection.mutable
@@ -22,7 +23,11 @@ object IntegrationTag extends Tag("mesosphere.marathon.IntegrationTest")
   * Convenience trait, which will mark all test cases as integration tests.
   */
 @IntegrationTest
-trait IntegrationFunSuite extends FunSuite
+trait IntegrationFunSuite extends FunSuite {
+  override protected def test(testName: String, testTags: Tag*)(testFun: => Any)(implicit pos: Position): Unit = {
+    super.test(testName, IntegrationTag +: testTags: _*)(testFun)
+  }
+}
 
 /**
   * Trait for running external marathon instances.

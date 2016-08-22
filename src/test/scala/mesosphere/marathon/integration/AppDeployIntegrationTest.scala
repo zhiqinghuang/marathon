@@ -3,7 +3,7 @@ package mesosphere.marathon.integration
 import java.util.UUID
 
 import com.typesafe.scalalogging.StrictLogging
-import mesosphere.marathon.Protos
+import mesosphere.marathon.{ IntegrationTest, Protos }
 import mesosphere.marathon.Protos.Constraint.Operator
 import mesosphere.marathon.Protos.HealthCheckDefinition.Protocol
 import mesosphere.marathon.api.v2.json.AppUpdate
@@ -19,6 +19,7 @@ import org.slf4j.LoggerFactory
 import scala.concurrent.duration._
 import scala.util.control.NonFatal
 
+@IntegrationTest
 class AppDeployIntegrationTest
     extends IntegrationFunSuite
     with EmbeddedMarathonTest
@@ -165,21 +166,19 @@ class AppDeployIntegrationTest
     appCount should be (1)
   }
 
-  /*test("create a simple app without health checks via secondary (proxying)") {
-    //if (!config.useExternalSetup) {
-      Given("a new app")
-      val app = appProxy(testBasePath / "app", "v1", instances = 1, withHealth = false)
+  test("create a simple app without health checks via secondary (proxying)") {
+    Given("a new app")
+    val app = appProxy(testBasePath / "app", "v1", instances = 1, withHealth = false)
 
-      When("The app is deployed")
-      val result = marathonProxy.createAppV2(app)
+    When("The app is deployed")
+    val result = marathon.createAppV2(app)
 
-      Then("The app is created")
-      result.code should be (201) //Created
-      extractDeploymentIds(result) should have size 1
-      waitForEvent("deployment_success")
-      waitForTasks(app.id, 1) //make sure, the app has really started
-    //}
-  }*/
+    Then("The app is created")
+    result.code should be (201) //Created
+    extractDeploymentIds(result) should have size 1
+    waitForEvent("deployment_success")
+    waitForTasks(app.id, 1) //make sure, the app has really started
+  }
 
   test("create a simple app with http health checks") {
     Given("a new app")
