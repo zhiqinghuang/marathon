@@ -4,7 +4,7 @@ import com.typesafe.sbt.SbtScalariform.ScalariformKeys
 import ohnosequences.sbt.SbtS3Resolver.autoImport._
 import org.scalastyle.sbt.ScalastylePlugin.{buildSettings => styleSettings}
 import sbt.Keys._
-import sbt.Tests.SubProcess
+import sbt.Tests.{Group, SubProcess}
 import sbt._
 import sbtassembly.AssemblyKeys._
 import sbtassembly.MergeStrategy
@@ -72,7 +72,12 @@ object MarathonBuild extends Build {
       fork in IntegrationTest := true,
       testOptions in IntegrationTest := Seq(formattingTestArg, Tests.Argument("-n", "mesosphere.marathon.IntegrationTest")),
       parallelExecution in IntegrationTest := true,
-      testForkedParallel in IntegrationTest := true//,
+      testForkedParallel in IntegrationTest := true,
+      testGrouping in IntegrationTest := (definedTests in IntegrationTest).value.map { test =>
+        Group(name = test.name,
+          tests = Seq(test),
+          runPolicy = SubProcess(ForkOptions(runJVMOptions = (javaOptions in IntegrationTest).value)))
+      }
       //concurrentRestrictions in IntegrationTest := Seq(Tags.limitAll(2))
     )
 
