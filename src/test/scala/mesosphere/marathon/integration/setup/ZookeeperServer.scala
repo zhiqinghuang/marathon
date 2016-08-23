@@ -1,20 +1,20 @@
 package mesosphere.marathon.integration.setup
 
-import java.nio.file.{Files, Path}
+import java.nio.file.{ Files, Path }
 import java.util.concurrent.Semaphore
 
 import com.twitter.zk.ZkClient
-import mesosphere.marathon.core.storage.store.impl.zk.{NoRetryPolicy, RichCuratorFramework}
+import mesosphere.marathon.core.storage.store.impl.zk.{ NoRetryPolicy, RichCuratorFramework }
 import mesosphere.marathon.util.Lock
 import mesosphere.util.PortAllocator
 import org.apache.commons.io.FileUtils
 import org.apache.curator.RetryPolicy
-import org.apache.curator.framework.{AuthInfo, CuratorFramework, CuratorFrameworkFactory}
+import org.apache.curator.framework.{ AuthInfo, CuratorFramework, CuratorFrameworkFactory }
 import org.apache.zookeeper.ZooDefs.Ids
-import org.apache.zookeeper.server.{ServerConfig, ZooKeeperServerMain}
+import org.apache.zookeeper.server.{ ServerConfig, ZooKeeperServerMain }
 import org.scalatest.concurrent.PatienceConfiguration.Timeout
 import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.{BeforeAndAfterAll, Suite}
+import org.scalatest.{ BeforeAndAfterAll, Suite }
 
 import scala.concurrent.duration._
 import scala.collection.mutable.ListBuffer
@@ -94,7 +94,7 @@ trait ZookeeperServerTest extends BeforeAndAfterAll { this: Suite with ScalaFutu
   private val twitterClients = Lock(ListBuffer.empty[ZkClient])
 
   def zkClient(retryPolicy: RetryPolicy = NoRetryPolicy, namespace: Option[String] = None,
-               username: Option[String] = None, password: Option[String] = None): RichCuratorFramework = {
+    username: Option[String] = None, password: Option[String] = None): RichCuratorFramework = {
     zkServer.start()
     val builder = CuratorFrameworkFactory.builder()
     builder.connectString(zkServer.connectUri)

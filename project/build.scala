@@ -41,7 +41,6 @@ object MarathonBuild extends Build {
       scalaStyleSettings ++
       testSettings ++
       integrationTestSettings ++
-      benchmarkSettings ++
       teamCitySetEnvSettings ++
       publishSettings ++
       Seq(
@@ -56,7 +55,7 @@ object MarathonBuild extends Build {
         buildInfoPackage := "mesosphere.marathon"
       )
   )
-    .configs(IntegrationTest, Benchmark)
+    .configs(IntegrationTest)
     .enablePlugins(BuildInfoPlugin)
     .dependsOn(pluginInterface)
 
@@ -64,16 +63,7 @@ object MarathonBuild extends Build {
    * Determine scala test runner output. `-e` for reporting on standard error.
    * http://scalatest.org/user_guide/using_the_runner
    */
-  lazy val formattingTestArg = Tests.Argument("-eDFG")
-
-  lazy val benchmarkSettings = inConfig(Benchmark)(Defaults.testTasks) ++
-    Seq(
-      testFrameworks in Benchmark := Seq(new TestFramework("org.scalameter.ScalaMeterFramework")),
-      testOptions in Benchmark := Seq(),
-      logBuffered in Benchmark := false,
-      parallelExecution in Benchmark := false,
-      fork in Benchmark := true
-    )
+  lazy val formattingTestArg = Tests.Argument("-eDFGO")
 
   // Someday, these may be able to run in parallel but the integration tests in particular have places
   // where they can kill each other _even_ when in different processes.
@@ -82,7 +72,8 @@ object MarathonBuild extends Build {
       fork in IntegrationTest := true,
       testOptions in IntegrationTest := Seq(formattingTestArg, Tests.Argument("-n", "mesosphere.marathon.IntegrationTest")),
       parallelExecution in IntegrationTest := true,
-      testForkedParallel in IntegrationTest := true
+      testForkedParallel in IntegrationTest := true//,
+      //concurrentRestrictions in IntegrationTest := Seq(Tags.limitAll(2))
     )
 
   lazy val testSettings = Seq(
@@ -102,7 +93,6 @@ object MarathonBuild extends Build {
   )
 
   lazy val IntegrationTest = config("integration") extend Test
-  lazy val Benchmark = config("bench") extend Test
 
   lazy val baseSettings = Seq (
     organization := "mesosphere.marathon",
@@ -286,8 +276,7 @@ object Dependencies {
     Test.scalatest % "test",
     Test.mockito % "test",
     Test.akkaTestKit % "test",
-    Test.junit % "test",
-    Test.scalameter % "test"
+    Test.junit % "test"
   ).map(_.excludeAll(excludeSlf4jLog4j12).excludeAll(excludeLog4j).excludeAll(excludeJCL))
 }
 
@@ -380,6 +369,6 @@ object Dependency {
     val akkaTestKit = "com.typesafe.akka" %% "akka-testkit" % V.Akka
     val diffson = "org.gnieh" %% "diffson" % V.Diffson
     val junit = "junit" % "junit" % V.JUnit
-    val scalameter = "com.storm-enroute" %% "scalameter" % V.ScalaMeter
   }
 }
+

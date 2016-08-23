@@ -160,9 +160,11 @@ trait MarathonTest extends BeforeAndAfterAll { this: Suite with StrictLogging wi
         }))
         complete(HttpResponse(status = StatusCodes.OK))
       } ~ get {
-        path("health" / Segment / Segment / IntNumber) { (path, versionId, port) =>
+        path("health" / Segments) { uriPath =>
           import PathId._
-          val appId = path.toRootPath
+          val (path, remaining) = uriPath.splitAt(uriPath.size - 2)
+          val (versionId, port) = (remaining.head, remaining.tail.head.toInt)
+          val appId = path.mkString("/").toRootPath
           def instance = healthChecks(_.find { c => c.appId == appId && c.versionId == versionId && c.port == port })
           def definition = healthChecks(_.find { c => c.appId == appId && c.versionId == versionId && c.port == 0 })
           val state = instance.orElse(definition).fold(true)(_.healthy)

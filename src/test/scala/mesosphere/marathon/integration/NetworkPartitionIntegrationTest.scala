@@ -4,6 +4,7 @@ import com.typesafe.scalalogging.StrictLogging
 import mesosphere.marathon.integration.facades.ITEnrichedTask
 import mesosphere.marathon.integration.setup._
 import org.scalatest.{ BeforeAndAfter, GivenWhenThen, Matchers }
+import scala.concurrent.duration._
 
 /**
   * Integration test to simulate the issues discovered a verizon where a network partition caused Marathon to be
@@ -17,6 +18,9 @@ import org.scalatest.{ BeforeAndAfter, GivenWhenThen, Matchers }
 class NetworkPartitionIntegrationTest extends IntegrationFunSuite
     with EmbeddedMarathonMesosClusterTest with Matchers
     with GivenWhenThen with BeforeAndAfter with StrictLogging {
+
+  override lazy val mesosNumSlaves: Int = 1
+  override lazy val mesosNumMasters: Int = 1
 
   //override to start marathon with a low reconciliation frequency
   override val marathonArgs: Map[String, String] = Map(
@@ -40,7 +44,7 @@ class NetworkPartitionIntegrationTest extends IntegrationFunSuite
     When("We stop the slave, the task is declared lost")
     mesosCluster.agents.head.stop()
 
-    waitForEventMatching("Task is declared lost") {
+    waitForEventMatching("Task is declared lost", 45.seconds) {
       matchEvent("TASK_LOST", task)
     }
 
@@ -61,7 +65,7 @@ class NetworkPartitionIntegrationTest extends IntegrationFunSuite
     mesosCluster.agents.head.start()
 
     Then("The task reappears as running")
-    waitForEventMatching("Task is declared running again") {
+    waitForEventMatching("Task is declared running again", 60.seconds) {
       matchEvent("TASK_RUNNING", task)
     }
   }
