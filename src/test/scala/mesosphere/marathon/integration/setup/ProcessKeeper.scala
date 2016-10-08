@@ -24,6 +24,10 @@ import scala.util.{ Failure, Success, Try }
   * Book Keeper for processes and services.
   * During integration tests, several services and processes have to be launched.
   * The ProcessKeeper knows about them and can handle their lifecycle.
+  *
+  *
+  * DEPRECATED. Do not continue to use this, instead, use [[LocalMarathonTest]] [[MarathonClusterTest]]
+  * [[MesosClusterTest]] and [[ZookeeperServerTest]]
   */
 object ProcessKeeper {
 

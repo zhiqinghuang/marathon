@@ -1,21 +1,16 @@
-package mesosphere.marahon.benchmarks.streams
+package mesosphere.marathon
+package benchmarks.streams
 
 import java.util
 import java.util.concurrent.TimeUnit
 
 import mesosphere.marathon.stream._
-import org.openjdk.jmh.annotations.{ Benchmark, BenchmarkMode, Fork, Mode, OutputTimeUnit, Scope, State }
+import org.openjdk.jmh.annotations.{Benchmark, BenchmarkMode, Fork, Mode, OutputTimeUnit}
 import org.openjdk.jmh.infra.Blackhole
 
-import scala.collection.immutable.Seq
+import scala.collection.JavaConverters._
 
-@State(Scope.Benchmark)
-object ScalaConversionsState {
-  val small: Seq[Int] = 0.to(100)
-  val medium: Seq[Int] = 0.to(1000)
-  val large: Seq[Int] = 0.to(10000)
-  val veryLarge: Seq[Int] = 0.to(1000 * 1000)
-}
+
 
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
 @BenchmarkMode(Array(Mode.Throughput, Mode.AverageTime))

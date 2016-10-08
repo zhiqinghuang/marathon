@@ -7,7 +7,8 @@ import mesosphere.marathon.PrePostDriverCallback
 import mesosphere.marathon.core.event.EventSubscribers
 import mesosphere.marathon.core.instance.Instance
 import mesosphere.marathon.core.pod.PodDefinition
-import mesosphere.marathon.core.storage.store.impl.cache.LoadTimeCachingPersistenceStore
+import mesosphere.marathon.core.storage.store.impl.cache.{ LazyCachingPersistenceStore, LoadTimeCachingPersistenceStore }
+import mesosphere.marathon.core.storage.store.impl.zk.ZkPersistenceStore
 import mesosphere.marathon.metrics.Metrics
 import mesosphere.marathon.state.{ AppDefinition, Group, MarathonTaskState, TaskFailure }
 import mesosphere.marathon.storage.migration.Migration
@@ -111,7 +112,21 @@ object StorageModule {
 
         val leadershipInitializers = store match {
           case s: LoadTimeCachingPersistenceStore[_, _, _] =>
-            Seq(s)
+            s.store match {
+              case zk: ZkPersistenceStore =>
+                Seq(s, zk)
+              case _ =>
+                Seq(s)
+            }
+          case s: LazyCachingPersistenceStore[_, _, _] =>
+            s.store match {
+              case zk: ZkPersistenceStore =>
+                Seq(zk)
+              case _ =>
+                Nil
+            }
+          case zk: ZkPersistenceStore =>
+            Seq(zk)
           case _ =>
             Nil
         }
