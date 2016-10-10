@@ -19,7 +19,7 @@ import scala.util.control.NonFatal
 
 class AppDeployIntegrationTest
     extends IntegrationFunSuite
-    with SingleMarathonIntegrationTest
+    with LocalMarathonTest
     with Matchers
     with AppendedClues
     with BeforeAndAfter
