@@ -1,11 +1,13 @@
 package mesosphere.marathon.test
 
-import akka.actor.ActorSystem
+import akka.actor.{ ActorSystem, Scheduler }
 import akka.stream.{ ActorMaterializer, Materializer }
 import akka.testkit.{ TestKit, TestKitBase }
 import com.typesafe.config.ConfigFactory
 import org.scalatest.BeforeAndAfterAll
 import org.slf4j.LoggerFactory
+
+import scala.concurrent.ExecutionContext
 
 /**
   * Start an actor system for all test methods and provide akka TestKit utility methods.
@@ -21,9 +23,12 @@ trait MarathonActorSupport extends MarathonSpec with BeforeAndAfterAll with Test
 
   implicit lazy val system: ActorSystem = ActorSystem(getClass.getSimpleName, stoppingConfig)
   implicit lazy val mat: Materializer = ActorMaterializer()
+  implicit lazy val ctx: ExecutionContext = ExecutionContext.global
+  implicit lazy val scheduler: Scheduler = system.scheduler
+
   log.info("actor system {}: starting", system.name)
 
-  override protected def afterAll(): Unit = {
+  override def afterAll(): Unit = {
     super.afterAll()
     log.info("actor system {}: shutting down", system.name)
     TestKit.shutdownActorSystem(system)

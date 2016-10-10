@@ -36,7 +36,7 @@ trait ExitDisabledTest extends BeforeAndAfterAll { self: Suite =>
 
   def exitCalled(desiredCode: Int)(implicit system: ActorSystem, scheduler: Scheduler): Future[Boolean] = {
     implicit val ctx = system.dispatcher
-    Retry.blocking("Check for exit", 20, 1.micro, 2.seconds) {
+    Retry.blocking("Check for exit", 500, 1.micro, 5.seconds) {
       if (exitsCalled(_.contains(desiredCode))) {
         true
       } else {

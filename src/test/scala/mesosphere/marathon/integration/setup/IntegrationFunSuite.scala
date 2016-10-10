@@ -1,7 +1,5 @@
 package mesosphere.marathon.integration.setup
 
-import java.io.File
-
 import akka.actor.ActorSystem
 import mesosphere.marathon.state.PathId
 import org.joda.time.DateTime
@@ -42,19 +40,10 @@ trait ExternalMarathonIntegrationTest {
     if (sys.env.contains(envName)) sys.env else sys.env + (envName -> config.mesosLib)
   }
 
-  def startMarathon(port: Int, args: String*): Unit = {
-    val cwd = new File(".")
-    ProcessKeeper.startMarathon(
-      cwd, env, List("--http_port", port.toString, "--zk", config.zk) ++ args.toList,
-      processName = s"marathon_$port"
-    )
-  }
-
   def handleEvent(event: CallbackEvent): Unit
 }
 
 object ExternalMarathonIntegrationTest {
-  val listener = mutable.ListBuffer.empty[ExternalMarathonIntegrationTest]
   val healthChecks = mutable.ListBuffer.empty[IntegrationHealthCheck]
 }
 
@@ -89,7 +78,6 @@ class IntegrationHealthCheck(val appId: PathId, val versionId: String, val port:
     state = past.lastOption.fold(state)(_.state)
     changes = future
     lastUpdate = DateTime.now()
-    println(s"Get health state from: $appId $versionId $port -> $state")
     state
   }
 

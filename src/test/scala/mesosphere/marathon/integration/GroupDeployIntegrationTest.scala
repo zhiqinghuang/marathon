@@ -1,18 +1,21 @@
-package mesosphere.marathon.integration
+package mesosphere.marathon
+package integration
 
 import mesosphere.marathon.api.v2.json.GroupUpdate
-import mesosphere.marathon.integration.setup.{ IntegrationFunSuite, IntegrationHealthCheck, SingleMarathonIntegrationTest, WaitTestSupport }
+import mesosphere.marathon.integration.setup.{ EmbeddedMarathonTest, IntegrationHealthCheck, WaitTestSupport }
 import mesosphere.marathon.state.{ AppDefinition, PathId, UpgradeStrategy }
+import mesosphere.marathon.test.{ MarathonActorSupport, MarathonSpec }
 import org.apache.http.HttpStatus
 import org.scalatest._
 import spray.http.DateTime
 
 import scala.concurrent.duration._
 
+@IntegrationTest
 class GroupDeployIntegrationTest
-    extends IntegrationFunSuite
-    with SingleMarathonIntegrationTest
-    with Matchers
+    extends MarathonSpec
+    with EmbeddedMarathonTest
+    with MarathonActorSupport
     with BeforeAndAfter
     with GivenWhenThen {
 

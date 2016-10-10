@@ -293,10 +293,10 @@ trait SimulatedMesosTest extends MesosTest {
 }
 
 trait MesosLocalTest extends MesosTest with BeforeAndAfterAll { this: Suite with ScalaFutures =>
-  implicit def system: ActorSystem
-  implicit def mat: Materializer
-  implicit def ctx: ExecutionContext
-  implicit def scheduler: Scheduler
+  implicit val system: ActorSystem
+  implicit val mat: Materializer
+  implicit val ctx: ExecutionContext
+  implicit val scheduler: Scheduler
 
   val mesosLocalServer = MesosLocal(autoStart = false)
   val port = mesosLocalServer.port
@@ -317,10 +317,10 @@ trait MesosLocalTest extends MesosTest with BeforeAndAfterAll { this: Suite with
 
 trait MesosClusterTest extends MesosTest
     with BeforeAndAfterAll { this: Suite with ZookeeperServerTest with ScalaFutures =>
-  implicit def system: ActorSystem
-  implicit def mat: Materializer
-  implicit def ctx: ExecutionContext = ExecutionContext.global
-  implicit def scheduler = system.scheduler
+  implicit val system: ActorSystem
+  implicit val mat: Materializer
+  implicit val ctx: ExecutionContext
+  implicit val scheduler: Scheduler
 
   lazy val mesosMasterUrl = s"zk://${zkServer.connectUri}/mesos"
   lazy val mesosNumMasters = 1

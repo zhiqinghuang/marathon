@@ -11,7 +11,7 @@ import akka.util.ByteString
 import akka.{ Done, NotUsed }
 import com.typesafe.scalalogging.StrictLogging
 import mesosphere.marathon.Protos.{ StorageVersion, ZKStoreEntry }
-import mesosphere.marathon.{ PrePostDriverCallback, StoreCommandFailedException }
+import mesosphere.marathon.StoreCommandFailedException
 import mesosphere.marathon.core.storage.store.impl.{ BasePersistenceStore, CategorizedKey }
 import mesosphere.marathon.metrics.Metrics
 import mesosphere.marathon.storage.migration.Migration
@@ -54,17 +54,7 @@ class ZkPersistenceStore(
     ctx: ExecutionContext,
     scheduler: Scheduler,
     val metrics: Metrics
-) extends BasePersistenceStore[ZkId, String, ZkSerialized]() with StrictLogging with PrePostDriverCallback {
-
-  override def preDriverStarts: Future[Unit] = {
-    client.client.start()
-    Future.successful(())
-  }
-
-  override def postDriverTerminates: Future[Unit] = {
-    client.client.close()
-    Future.successful(())
-  }
+) extends BasePersistenceStore[ZkId, String, ZkSerialized]() with StrictLogging {
 
   private val limitRequests = CapConcurrentExecutions(
     CapConcurrentExecutionsMetrics(metrics, getClass),

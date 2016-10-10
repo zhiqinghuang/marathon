@@ -1,7 +1,10 @@
-package mesosphere.marathon.integration
+package mesosphere.marathon
+package integration
 
 import java.io.File
+import java.util.UUID
 
+import mesosphere.AkkaIntegrationFunTest
 import mesosphere.marathon.api.v2.json.AppUpdate
 import mesosphere.marathon.core.health.{ HealthCheck, MarathonHttpHealthCheck }
 import mesosphere.marathon.core.readiness.ReadinessCheck
@@ -9,16 +12,31 @@ import mesosphere.marathon.integration.setup._
 import mesosphere.marathon.raml.Resources
 import mesosphere.marathon.state._
 import org.apache.commons.io.FileUtils
-import org.scalatest.{ BeforeAndAfter, GivenWhenThen, Matchers }
 
 import scala.collection.immutable.Seq
+import scala.collection.mutable
 import scala.concurrent.duration._
 import scala.util.Try
+import scala.sys.process._
 
-class ReadinessCheckIntegrationTest extends IntegrationFunSuite with SingleMarathonIntegrationTest with Matchers with BeforeAndAfter with GivenWhenThen {
+@IntegrationTest
+class ReadinessCheckIntegrationTest extends AkkaIntegrationFunTest with EmbeddedMarathonTest {
 
   //clean up state before running the test case
   before(cleanUp())
+  after {
+    idsToKill.foreach { id =>
+      val PIDRE = """^\s*(\d+)\s+(\S*)\s*(.*)$""".r
+
+      val pids = "jps -lv".!!.split("\n").collect {
+        case PIDRE(pid, mainClass, jvmArgs) if mainClass.contains(classOf[ServiceMock].getName) && jvmArgs.contains(id) => pid
+      }
+      if (pids.nonEmpty) {
+        s"kill -9 ${pids.mkString(" ")}".!
+      }
+    }
+    idsToKill.clear()
+  }
 
   test("A deployment of an application with readiness checks (no health) does finish when the plan is ready") {
     deploy(serviceProxy("/readynohealth".toTestPath, "phase(block1!,block2!,block3!)", withHealth = false), continue = true)
@@ -92,14 +110,17 @@ class ReadinessCheckIntegrationTest extends IntegrationFunSuite with SingleMarat
     )
   }
 
+  private var idsToKill = mutable.Buffer.empty[UUID]
   /**
     * Create a shell script that can start a service mock
     */
-  private lazy val serviceMockScript: String = {
+  private def serviceMockScript: String = {
     val javaExecutable = sys.props.get("java.home").fold("java")(_ + "/bin/java")
     val classPath = sys.props.getOrElse("java.class.path", "target/classes").replaceAll(" ", "")
     val main = classOf[ServiceMock].getName
-    val run = s"""$javaExecutable -Xmx64m -classpath $classPath $main"""
+    val id = UUID.randomUUID()
+    idsToKill += id
+    val run = s"""$javaExecutable -Xmx64m -DserviceMockId=$id -classpath $classPath $main"""
     val file = File.createTempFile("serviceProxy", ".sh")
     file.deleteOnExit()
 

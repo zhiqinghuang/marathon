@@ -1,16 +1,18 @@
 package mesosphere.mesos.scale
 
-import java.io.File
-
+import mesosphere.AkkaIntegrationFunTest
 import mesosphere.marathon.api.v2.json.AppUpdate
-import mesosphere.marathon.integration.facades.ITDeploymentResult
 import mesosphere.marathon.integration.facades.MarathonFacade._
+import mesosphere.marathon.integration.facades.{ITDeploymentResult, MarathonFacade}
 import mesosphere.marathon.integration.setup._
-import mesosphere.marathon.state.{ AppDefinition, PathId }
-import org.scalatest.{ BeforeAndAfter, ConfigMap, GivenWhenThen, Matchers }
+import mesosphere.marathon.state.{AppDefinition, PathId}
+import mesosphere.marathon.util.Retry
+import mesosphere.mesos.simulation.MarathonWithSimulatedMesos
+import org.scalatest.concurrent.PatienceConfiguration.Timeout
 import org.slf4j.LoggerFactory
 import play.api.libs.json._
 
+import scala.collection.immutable.Seq
 import scala.concurrent.duration._
 
 object SingleAppScalingTest {
@@ -18,38 +20,55 @@ object SingleAppScalingTest {
   val appInfosFile = "scaleUp20s-appInfos"
 }
 
-class SingleAppScalingTest
-    extends IntegrationFunSuite
-    with SingleMarathonIntegrationTest
-    with Matchers
-    with BeforeAndAfter
-    with GivenWhenThen {
+class SingleAppScalingTest extends AkkaIntegrationFunTest with ZookeeperServerTest with SimulatedMesosTest with MarathonTest {
+  val maxTasksPerOffer = Option(System.getenv("MARATHON_MAX_TASKS_PER_OFFER")).getOrElse("1")
+
+  lazy val marathonServer = LocalMarathon(false, "", zkUrl = s"zk://${zkServer.connectUri}/marathon", conf = Map(
+    "max_tasks_per_offer" -> maxTasksPerOffer,
+    "task_launch_timeout" -> "20000",
+    "task_launch_confirm_timeout" -> "1000"),
+    main = (args: Seq[String]) => new MarathonWithSimulatedMesos(args))
+
+
+  override lazy val marathonUrl: String = s"http://localhost:${marathonServer.httpPort}"
+  override lazy val testBasePath: PathId = PathId.empty
+  override lazy val marathon: MarathonFacade = new MarathonFacade(marathonUrl, testBasePath)
 
   private[this] val log = LoggerFactory.getLogger(getClass)
+
+  override def cleanUp(withSubscribers: Boolean = false): Unit = {
+    logger.info("Starting to CLEAN UP !!!!!!!!!!")
+    events.clear()
+
+    val deleteResult: RestResult[ITDeploymentResult] = marathon.deleteGroup(testBasePath, force = true)
+    if (deleteResult.code != 404) {
+      waitForChange(deleteResult)
+    }
+
+    val apps = marathon.listAppsInBaseGroup
+    require(apps.value.isEmpty, s"apps weren't empty: ${apps.entityPrettyJsonString}")
+    val groups = marathon.listGroupsInBaseGroup
+    require(groups.value.isEmpty, s"groups weren't empty: ${groups.entityPrettyJsonString}")
+
+    logger.info("CLEAN UP finished !!!!!!!!!")
+  }
 
   //clean up state before running the test case
   before(cleanUp())
 
-  override def afterAll(configMap: ConfigMap): Unit = {
-    super.afterAll(configMap)
+  override def beforeAll(): Unit = {
+    super.beforeAll()
+    marathonServer.start()
+    Retry.blocking("Wait for marathon to start", maxAttempts = 60)(marathon.info).futureValue(Timeout(10.seconds))
+  }
+
+  override def afterAll(): Unit = {
+    super.afterAll()
+    marathonServer.close()
     println()
     DisplayAppScalingResults.displayMetrics(SingleAppScalingTest.metricsFile)
     println()
     DisplayAppScalingResults.displayAppInfoScaling(SingleAppScalingTest.appInfosFile)
-  }
-
-  override def startMarathon(port: Int, args: String*): Unit = {
-    val cwd = new File(".")
-
-    val maxTasksPerOffer = Option(System.getenv("MARATHON_MAX_TASKS_PER_OFFER")).getOrElse("1")
-
-    ProcessKeeper.startMarathon(cwd, env,
-      List("--http_port", port.toString,
-        "--zk", config.zk,
-        "--max_tasks_per_offer", maxTasksPerOffer,
-        "--task_launch_timeout", "20000",
-        "--task_launch_confirm_timeout", "1000") ++ args.toList,
-      mainClass = "mesosphere.mesos.simulation.SimulateMesosMain")
   }
 
   private[this] def createStopApp(instances: Int): Unit = {

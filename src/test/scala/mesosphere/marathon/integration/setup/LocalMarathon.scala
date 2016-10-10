@@ -9,8 +9,12 @@ import java.util.concurrent.{ ConcurrentLinkedQueue, Semaphore }
 import akka.actor.{ ActorSystem, Scheduler }
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.client.RequestBuilding.Get
-import akka.http.scaladsl.model.{ HttpResponse, StatusCodes }
+import akka.http.scaladsl.model.{ HttpRequest, HttpResponse, StatusCodes }
+import akka.http.scaladsl.unmarshalling.FromRequestUnmarshaller
 import akka.stream.Materializer
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.scala.DefaultScalaModule
+import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
 import com.typesafe.scalalogging.StrictLogging
 import mesosphere.marathon.core.health.{ HealthCheck, MarathonHttpHealthCheck }
 import mesosphere.marathon.integration.facades.{ ITDeploymentResult, ITEnrichedTask, MarathonFacade, MesosFacade }
@@ -24,12 +28,12 @@ import org.apache.mesos.Protos
 import org.scalatest.concurrent.PatienceConfiguration.Timeout
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{ BeforeAndAfterAll, Suite }
-import play.api.libs.json.{ JsObject, JsString, JsValue, Json }
+import play.api.libs.json.{ JsString, Json }
 
 import scala.annotation.tailrec
 import scala.collection.mutable
 import scala.concurrent.duration._
-import scala.concurrent.{ Await, ExecutionContext }
+import scala.concurrent.{ Await, ExecutionContext, Future }
 import scala.sys.process.Process
 import scala.util.Try
 
@@ -37,7 +41,8 @@ case class LocalMarathon(
     autoStart: Boolean = true,
     masterUrl: String,
     zkUrl: String,
-    conf: Map[String, String] = Map.empty)(implicit
+    conf: Map[String, String] = Map.empty,
+    main: (Seq[String] => MarathonApp) = (args: Seq[String]) => new MarathonApp(args))(implicit
   system: ActorSystem,
     mat: Materializer,
     ctx: ExecutionContext,
@@ -78,7 +83,7 @@ case class LocalMarathon(
   val args = config.flatMap { case (k, v) => Seq(s"--$k", v) }(collection.breakOut)
 
   private var closing = false
-  lazy val marathon = new MarathonApp(args)
+  lazy val marathon = main(args)
 
   private val thread = new Thread(new Runnable {
     override def run(): Unit = {
@@ -129,29 +134,35 @@ trait MarathonTest extends BeforeAndAfterAll { this: Suite with StrictLogging wi
   private val appProxyIds = Lock(mutable.ListBuffer.empty[String])
 
   import UpdateEventsHelper._
-  implicit def mat: Materializer
-  implicit def system: ActorSystem
-  implicit def ctx: ExecutionContext
-  implicit def scheduler: Scheduler
+  implicit val system: ActorSystem
+  implicit val mat: Materializer
+  implicit val ctx: ExecutionContext
+  implicit val scheduler: Scheduler
 
   protected val events = new ConcurrentLinkedQueue[CallbackEvent]()
   protected val healthChecks = Lock(mutable.ListBuffer.empty[IntegrationHealthCheck])
   protected[setup] lazy val callbackEndpoint = {
     val route = {
       import akka.http.scaladsl.server.Directives._
-      import de.heikoseeberger.akkahttpplayjson.PlayJsonSupport._
+      val mapper = new ObjectMapper() with ScalaObjectMapper
+      mapper.registerModule(DefaultScalaModule)
 
-      (post & entity(as[JsObject])) { event =>
-        val kind = event.value.get("eventType") match {
+      implicit val unmarshal = new FromRequestUnmarshaller[Map[String, Any]] {
+        override def apply(value: HttpRequest)(implicit ec: ExecutionContext, materializer: Materializer): Future[Map[String, Any]] = {
+          value.entity.toStrict(5.seconds)(materializer).map { entity =>
+            mapper.readValue[Map[String, Any]](entity.data.utf8String)
+          }(ec)
+        }
+      }
+
+      (post & entity(as[Map[String, Any]])) { event =>
+        val kind = event.get("eventType") match {
           case Some(JsString(s)) => s
           case Some(s) => s.toString
           case None => "unknown"
         }
         logger.info(s"Received callback event: $kind with props $event")
-        events.add(CallbackEvent(kind, event.value.map {
-          case (k, JsString(s)) => k -> s
-          case (k, s: JsValue) => k -> s.toString
-        }(collection.breakOut)))
+        events.add(CallbackEvent(kind, event))
         complete(HttpResponse(status = StatusCodes.OK))
       } ~ get {
         path("health" / Segments) { uriPath =>
@@ -409,6 +420,7 @@ trait LocalMarathonTest
 
   val testBasePath: PathId = PathId("/")
   lazy val marathon = new MarathonFacade(marathonUrl, testBasePath)
+  lazy val appMock: AppMockFacade = new AppMockFacade()
 
   abstract override def beforeAll(): Unit = {
     super.beforeAll()
@@ -434,7 +446,7 @@ trait EmbeddedMarathonMesosClusterTest extends ZookeeperServerTest with MesosClu
 trait MarathonClusterTest extends ZookeeperServerTest with MesosLocalTest with LocalMarathonTest {
   this: Suite with StrictLogging =>
 
-  val numAdditionalMarathons = 0
+  val numAdditionalMarathons = 2
   lazy val additionalMarathons = 0.until(numAdditionalMarathons).map { _ =>
     LocalMarathon(autoStart = false, masterUrl = mesosMasterUrl,
       zkUrl = s"zk://${zkServer.connectUri}/marathon",
@@ -447,6 +459,9 @@ trait MarathonClusterTest extends ZookeeperServerTest with MesosLocalTest with L
   override def beforeAll(): Unit = {
     super.beforeAll()
     additionalMarathons.foreach(_.start())
+    marathonFacades.foreach { facade =>
+      Retry.blocking("Wait for marathon to start", maxAttempts = 60)(facade.info).futureValue(Timeout(10.seconds))
+    }
   }
 
   override def afterAll(): Unit = {

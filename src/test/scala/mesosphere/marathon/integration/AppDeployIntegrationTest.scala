@@ -1,8 +1,9 @@
-package mesosphere.marathon.integration
+package mesosphere.marathon
+package integration
 
 import java.util.UUID
 
-import mesosphere.marathon.Protos
+import mesosphere.AkkaIntegrationFunTest
 import mesosphere.marathon.Protos.Constraint.Operator
 import mesosphere.marathon.Protos.HealthCheckDefinition.Protocol
 import mesosphere.marathon.api.v2.json.AppUpdate
@@ -11,19 +12,13 @@ import mesosphere.marathon.integration.facades.MarathonFacade._
 import mesosphere.marathon.integration.facades.{ ITDeployment, ITEnrichedTask, ITQueueItem }
 import mesosphere.marathon.integration.setup._
 import mesosphere.marathon.state._
-import org.scalatest.{ AppendedClues, BeforeAndAfter, GivenWhenThen, Matchers }
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.duration._
 import scala.util.control.NonFatal
 
-class AppDeployIntegrationTest
-    extends IntegrationFunSuite
-    with LocalMarathonTest
-    with Matchers
-    with AppendedClues
-    with BeforeAndAfter
-    with GivenWhenThen {
+@IntegrationTest
+class AppDeployIntegrationTest extends AkkaIntegrationFunTest with EmbeddedMarathonTest {
 
   private[this] val log = LoggerFactory.getLogger(getClass)
 
@@ -157,19 +152,17 @@ class AppDeployIntegrationTest
 
   // OK
   test("create a simple app without health checks via secondary (proxying)") {
-    if (!config.useExternalSetup) {
-      Given("a new app")
-      val app = appProxy(testBasePath / "app", "v1", instances = 1, withHealth = false)
+    Given("a new app")
+    val app = appProxy(testBasePath / "app", "v1", instances = 1, withHealth = false)
 
-      When("The app is deployed")
-      val result = marathonProxy.createAppV2(app)
+    When("The app is deployed")
+    val result = marathon.createAppV2(app)
 
-      Then("The app is created")
-      result.code should be (201) //Created
-      extractDeploymentIds(result) should have size 1
-      waitForEvent("deployment_success")
-      waitForTasks(app.id, 1) //make sure, the app has really started
-    }
+    Then("The app is created")
+    result.code should be (201) //Created
+    extractDeploymentIds(result) should have size 1
+    waitForEvent("deployment_success")
+    waitForTasks(app.id, 1) //make sure, the app has really started
   }
 
   // OK
@@ -506,8 +499,8 @@ class AppDeployIntegrationTest
       "deployment_success")(30.seconds)
 
     val Seq(apiPostEvent) = events("api_post_event")
-    apiPostEvent.info("appDefinition").asInstanceOf[Map[String, Any]]("id").asInstanceOf[String] should
-      be(appId)
+    val xx = apiPostEvent.info("appDefinition").asInstanceOf[Map[String, Any]]("id").asInstanceOf[String]
+    xx should be(appId)
 
     val Seq(groupChangeSuccess) = events("group_change_success")
     groupChangeSuccess.info("groupId").asInstanceOf[String] should be(appIdPath.parent.toString)

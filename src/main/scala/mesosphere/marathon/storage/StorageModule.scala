@@ -2,13 +2,14 @@ package mesosphere.marathon.storage
 
 import akka.actor.{ ActorRefFactory, Scheduler }
 import akka.stream.Materializer
+import com.google.common.util.concurrent.{ AbstractIdleService, Service }
 import com.typesafe.config.Config
 import mesosphere.marathon.PrePostDriverCallback
 import mesosphere.marathon.core.event.EventSubscribers
 import mesosphere.marathon.core.instance.Instance
 import mesosphere.marathon.core.pod.PodDefinition
-import mesosphere.marathon.core.storage.store.impl.cache.{ LazyCachingPersistenceStore, LoadTimeCachingPersistenceStore }
-import mesosphere.marathon.core.storage.store.impl.zk.ZkPersistenceStore
+import mesosphere.marathon.core.storage.store.impl.cache.LoadTimeCachingPersistenceStore
+import mesosphere.marathon.core.storage.store.impl.zk.RichCuratorFramework
 import mesosphere.marathon.metrics.Metrics
 import mesosphere.marathon.state.{ AppDefinition, Group, MarathonTaskState, TaskFailure }
 import mesosphere.marathon.storage.migration.Migration
@@ -23,7 +24,7 @@ import scala.concurrent.ExecutionContext
 /**
   * Provides the repositories for all persistable entities.
   */
-trait StorageModule {
+trait StorageModule extends Service {
   val appRepository: ReadOnlyAppRepository
   val podRepository: ReadOnlyPodRepository
   val instanceRepository: InstanceRepository
@@ -93,7 +94,7 @@ object StorageModule {
         val leadershipInitializers = Seq(appStore, taskStore, deployStore, taskFailureStore,
           groupStore, frameworkIdStore, eventSubscribersStore).collect { case s: PrePostDriverCallback => s }
 
-        StorageModuleImpl(appRepository, podRepository, instanceRepository, deploymentRepository,
+        StorageModuleImpl(None, appRepository, podRepository, instanceRepository, deploymentRepository,
           taskFailureRepository, groupRepository, frameworkIdRepository, eventSubscribersRepository, migration,
           leadershipInitializers)
       case zk: CuratorZk =>
@@ -112,21 +113,7 @@ object StorageModule {
 
         val leadershipInitializers = store match {
           case s: LoadTimeCachingPersistenceStore[_, _, _] =>
-            s.store match {
-              case zk: ZkPersistenceStore =>
-                Seq(s, zk)
-              case _ =>
-                Seq(s)
-            }
-          case s: LazyCachingPersistenceStore[_, _, _] =>
-            s.store match {
-              case zk: ZkPersistenceStore =>
-                Seq(zk)
-              case _ =>
-                Nil
-            }
-          case zk: ZkPersistenceStore =>
-            Seq(zk)
+            Seq(s)
           case _ =>
             Nil
         }
@@ -135,6 +122,7 @@ object StorageModule {
           deploymentRepository, taskRepository, instanceRepository, taskFailureRepository,
           frameworkIdRepository, eventSubscribersRepository)
         StorageModuleImpl(
+          Some(zk.client),
           appRepository,
           podRepository,
           instanceRepository,
@@ -169,6 +157,7 @@ object StorageModule {
           deploymentRepository, taskRepository, instanceRepository, taskFailureRepository,
           frameworkIdRepository, eventSubscribersRepository)
         StorageModuleImpl(
+          None,
           appRepository,
           podRepository,
           instanceRepository,
@@ -184,13 +173,20 @@ object StorageModule {
 }
 
 private[storage] case class StorageModuleImpl(
-  appRepository: ReadOnlyAppRepository,
-  podRepository: ReadOnlyPodRepository,
-  instanceRepository: InstanceRepository,
-  deploymentRepository: DeploymentRepository,
-  taskFailureRepository: TaskFailureRepository,
-  groupRepository: GroupRepository,
-  frameworkIdRepository: FrameworkIdRepository,
-  eventSubscribersRepository: EventSubscribersRepository,
-  migration: Migration,
-  leadershipInitializers: Seq[PrePostDriverCallback]) extends StorageModule
+    client: Option[RichCuratorFramework],
+    appRepository: ReadOnlyAppRepository,
+    podRepository: ReadOnlyPodRepository,
+    instanceRepository: InstanceRepository,
+    deploymentRepository: DeploymentRepository,
+    taskFailureRepository: TaskFailureRepository,
+    groupRepository: GroupRepository,
+    frameworkIdRepository: FrameworkIdRepository,
+    eventSubscribersRepository: EventSubscribersRepository,
+    migration: Migration,
+    leadershipInitializers: Seq[PrePostDriverCallback]) extends AbstractIdleService with StorageModule {
+  override def shutDown(): Unit = {
+    client.foreach(_.client.close())
+  }
+
+  override def startUp(): Unit = {}
+}

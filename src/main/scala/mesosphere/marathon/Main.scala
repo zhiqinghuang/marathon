@@ -7,6 +7,7 @@ import mesosphere.chaos.metrics.MetricsModule
 import mesosphere.marathon.api.MarathonRestModule
 import mesosphere.marathon.core.CoreGuiceModule
 import mesosphere.marathon.metrics.{ MetricsReporterModule, MetricsReporterService }
+import mesosphere.marathon.storage.StorageModule
 import org.slf4j.LoggerFactory
 import org.slf4j.bridge.SLF4JBridgeHandler
 
@@ -42,7 +43,8 @@ class MarathonApp(args: Seq[String]) extends AutoCloseable {
     val services = Seq(
       classOf[HttpService],
       classOf[MarathonSchedulerService],
-      classOf[MetricsReporterService]).map(injector.getInstance(_))
+      classOf[MetricsReporterService],
+      classOf[StorageModule]).map(injector.getInstance(_))
     val serviceManager = new ServiceManager(services.asJava)
     this.serviceManager = Some(serviceManager)
 

@@ -1,14 +1,16 @@
-package mesosphere.marathon.integration
+package mesosphere.marathon
+package integration
 
-import mesosphere.marathon.integration.setup.{ IntegrationFunSuite, SingleMarathonIntegrationTest }
+import mesosphere.marathon.integration.setup.EmbeddedMarathonTest
+import mesosphere.marathon.test.{ MarathonActorSupport, MarathonSpec }
 import org.scalatest._
 
+@IntegrationTest
 class EventSubscribersIntegrationTest
-    extends IntegrationFunSuite
-    with SingleMarathonIntegrationTest
-    with Matchers
-    with BeforeAndAfter
-    with GivenWhenThen {
+    extends MarathonSpec
+    with EmbeddedMarathonTest
+    with MarathonActorSupport
+    with BeforeAndAfter {
 
   before(cleanUp())
 

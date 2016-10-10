@@ -1,19 +1,15 @@
-package mesosphere.marathon.integration.setup
+package mesosphere.marathon
+package integration.setup
 
-import mesosphere.marathon.integration.facades.MarathonFacade
-import MarathonFacade._
+import mesosphere.AkkaIntegrationFunTest
+import mesosphere.marathon.integration.facades.MarathonFacade._
 import mesosphere.marathon.raml.Resources
 import mesosphere.marathon.state.{ AppDefinition, Container }
-import org.scalatest.{ BeforeAndAfter, GivenWhenThen, Matchers }
 
 import scala.concurrent.duration._
 
-class DockerAppIntegrationTest
-    extends IntegrationFunSuite
-    with SingleMarathonIntegrationTest
-    with Matchers
-    with BeforeAndAfter
-    with GivenWhenThen {
+@IntegrationTest
+class DockerAppIntegrationTest extends AkkaIntegrationFunTest with EmbeddedMarathonTest {
   //clean up state before running the test case
   before(cleanUp())
 

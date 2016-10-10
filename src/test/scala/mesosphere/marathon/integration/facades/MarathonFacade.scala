@@ -1,4 +1,5 @@
-package mesosphere.marathon.integration.facades
+package mesosphere.marathon
+package integration.facades
 
 import java.io.File
 import java.util.Date
@@ -332,10 +333,9 @@ class MarathonFacade(url: String, baseGroup: PathId, waitTime: Duration = 30.sec
 }
 
 object MarathonFacade {
-  def extractDeploymentIds(app: RestResult[AppDefinition]): scala.collection.Seq[String] = {
+  def extractDeploymentIds(app: RestResult[AppDefinition]): Seq[String] = {
     try {
-      for (deployment <- (app.entityJson \ "deployments").as[JsArray].value)
-        yield (deployment \ "id").as[String]
+      (app.entityJson \ "deployments").as[JsArray].value.map(js => (js \ "id").as[String])(collection.breakOut)
     } catch {
       case NonFatal(e) =>
         throw new RuntimeException(s"while parsing:\n${app.entityPrettyJsonString}", e)

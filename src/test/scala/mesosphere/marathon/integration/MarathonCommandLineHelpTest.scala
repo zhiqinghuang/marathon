@@ -1,25 +1,16 @@
-package mesosphere.marathon.integration
+package mesosphere.marathon
+package integration
 
-import java.io.File
+import mesosphere.AkkaIntegrationTest
+import mesosphere.marathon.test.ExitDisabledTest
 
-import mesosphere.marathon.integration.setup.{ ProcessKeeper, IntegrationFunSuite }
-import org.scalatest.{ GivenWhenThen, BeforeAndAfter, Matchers }
+import scala.util.Try
 
-class MarathonCommandLineHelpTest
-    extends IntegrationFunSuite
-    with Matchers
-    with BeforeAndAfter
-    with GivenWhenThen {
-
-  after {
-    ProcessKeeper.stopAllProcesses()
-  }
-
-  test("marathon --help shouldn't crash") {
-    val cwd = new File(".")
-    val process = ProcessKeeper.startMarathon(
-      cwd, env = Map.empty, arguments = List("--help"),
-      startupLine = "Show help message")
-    assert(process.exitValue() == 0)
+class MarathonCommandLineHelpTest extends AkkaIntegrationTest with ExitDisabledTest {
+  "Marathon" when {
+    "passed --help shouldn't crash" in {
+      Try(new MarathonApp(Seq("--help")))
+      exitCalled(0).futureValue should be(true)
+    }
   }
 }

@@ -79,7 +79,8 @@ class ZkPersistenceStoreTest extends AkkaUnitTest
       val root = UUID.randomUUID().toString
       rootClient.create(s"/$root").futureValue(Timeout(5.seconds))
       implicit val metrics = new Metrics(new MetricRegistry)
-      val newStore = new ZkPersistenceStore(rootClient.usingNamespace(root), Duration.Inf)
+      val builder = zkClient(namespace = Some(root))
+      val newStore = new ZkPersistenceStore(builder, Duration.Inf)
       val twitterClient = twitterZkClient()
       val legacyStore = new ZKStore(twitterClient, ZNode(twitterClient, s"/$root"), CompressionConf(true, 64 * 1024),
         8, 1024)

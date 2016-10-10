@@ -32,6 +32,7 @@ import mesosphere.marathon.core.task.update.TaskStatusUpdateProcessor
 import mesosphere.marathon.metrics.Metrics
 import mesosphere.marathon.plugin.auth.{ Authenticator, Authorizer }
 import mesosphere.marathon.plugin.http.HttpRequestHandler
+import mesosphere.marathon.storage.StorageModule
 import mesosphere.marathon.{ MarathonConf, ModuleNames, PrePostDriverCallback }
 import mesosphere.util.{ CapConcurrentExecutions, CapConcurrentExecutionsMetrics }
 import org.eclipse.jetty.servlets.EventSourceServlet
@@ -63,6 +64,9 @@ class CoreGuiceModule extends AbstractModule {
 
   @Provides @Singleton
   def stateOpProcessor(coreModule: CoreModule): TaskStateOpProcessor = coreModule.taskTrackerModule.stateOpProcessor
+
+  @Provides @Singleton
+  def storageModule(coreModule: CoreModule): StorageModule = coreModule.storageModule
 
   @Provides @Singleton
   @SuppressWarnings(Array("UnusedMethodParameter"))
