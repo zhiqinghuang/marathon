@@ -238,7 +238,7 @@ trait MarathonTest extends BeforeAndAfterAll { this: Suite with StrictLogging wi
   }
 
   lazy val appProxyHealthChecks = Set(
-    MarathonHttpHealthCheck(gracePeriod = 5.second, interval = 0.5.second, maxConsecutiveFailures = 2))
+    MarathonHttpHealthCheck(gracePeriod = 5.second, interval = 1.second, maxConsecutiveFailures = 2))
 
   def appProxy(appId: PathId, versionId: String, instances: Int,
     withHealth: Boolean = true, dependencies: Set[PathId] = Set.empty): AppDefinition = {
