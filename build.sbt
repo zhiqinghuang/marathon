@@ -2,13 +2,12 @@ import com.amazonaws.auth.{EnvironmentVariableCredentialsProvider, InstanceProfi
 import com.typesafe.sbt.SbtScalariform.ScalariformKeys
 import com.typesafe.sbt.packager.docker.ExecCmd
 import mesosphere.raml.RamlGeneratorPlugin
-import sbt.Tests.SubProcess
 import sbtrelease.ReleaseStateTransformations._
 
 import scalariform.formatter.preferences.{AlignArguments, AlignParameters, AlignSingleLineCaseStatements, CompactControlReadability, DanglingCloseParenthesis, DoubleIndentClassDeclaration, FormatXml, FormattingPreferences, IndentSpaces, IndentWithTabs, MultilineScaladocCommentsStartOnFirstLine, PlaceScaladocAsterisksBeneathSecondAsterisk, Preserve, PreserveSpaceBeforeArguments, SpaceBeforeColon, SpaceInsideBrackets, SpaceInsideParentheses, SpacesAroundMultiImports, SpacesWithinPatternBinders}
 
 lazy val IntegrationTest = config("integration") extend Test
-lazy val formattingTestArg = Tests.Argument("-eDFG")
+def formattingTestArg(target:File) = Tests.Argument("-u", target.getAbsolutePath, "-eDFG")
 
 // 0.1.15 has tons of false positives in async/await
 resolvers += Resolver.sonatypeRepo("snapshots")
@@ -120,25 +119,15 @@ lazy val commonSettings = inConfig(IntegrationTest)(Defaults.testTasks) ++ Seq(
 
   parallelExecution in Test := true,
   testForkedParallel in Test := true,
-  testOptions in Test := Seq(formattingTestArg, Tests.Argument("-l", "mesosphere.marathon.IntegrationTest")),
+  testOptions in Test := Seq(formattingTestArg(target.value), Tests.Argument("-l", "mesosphere.marathon.IntegrationTest")),
   fork in Test := true,
 
   fork in IntegrationTest := true,
-  testOptions in IntegrationTest := Seq(formattingTestArg, Tests.Argument("-n", "mesosphere.marathon.IntegrationTest")),
-  parallelExecution in IntegrationTest := false,
-  testForkedParallel in IntegrationTest := false,
-  testListeners in IntegrationTest := Seq(new JUnitXmlTestsListener((target.value / "test-reports" / "integration").getAbsolutePath)),
-  testGrouping in IntegrationTest := (definedTests in IntegrationTest).value.map { test =>
-    Tests.Group(name = test.name, tests = Seq(test),
-      runPolicy = SubProcess(ForkOptions((javaHome in IntegrationTest).value,
-        (outputStrategy in IntegrationTest).value, Nil, Some(baseDirectory.value),
-        (javaOptions in IntegrationTest).value, (connectInput in IntegrationTest).value,
-        (envVars in IntegrationTest).value
-      )))
-  },
-
+  testOptions in IntegrationTest := Seq(formattingTestArg(target.value), Tests.Argument("-n", "mesosphere.marathon.IntegrationTest")),
+  parallelExecution in IntegrationTest := true,
+  testForkedParallel in IntegrationTest := true,
+  concurrentRestrictions in IntegrationTest := Seq(Tags.limitAll(java.lang.Runtime.getRuntime.availableProcessors())),
   scapegoatVersion := "1.2.1"
-
 )
 
 // TODO: Move away from sbt-assembly, favoring sbt-native-packager

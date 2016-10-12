@@ -1,24 +1,24 @@
 package mesosphere.marathon.integration.setup
 
 import java.nio.file.{ Files, Path }
-import java.util.Collections
 import java.util.concurrent.Semaphore
 
 import com.twitter.zk.ZkClient
 import mesosphere.marathon.core.storage.store.impl.zk.{ NoRetryPolicy, RichCuratorFramework }
+import mesosphere.marathon.stream._
 import mesosphere.marathon.util.Lock
 import mesosphere.util.PortAllocator
 import org.apache.commons.io.FileUtils
 import org.apache.curator.RetryPolicy
-import org.apache.curator.framework.{ AuthInfo, CuratorFramework, CuratorFrameworkFactory }
+import org.apache.curator.framework.{ CuratorFramework, CuratorFrameworkFactory }
 import org.apache.zookeeper.ZooDefs.Ids
 import org.apache.zookeeper.server.{ ServerConfig, ZooKeeperServerMain }
 import org.scalatest.concurrent.PatienceConfiguration.Timeout
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{ BeforeAndAfterAll, Suite }
 
-import scala.concurrent.duration._
 import scala.collection.mutable.ListBuffer
+import scala.concurrent.duration._
 import scala.util.Try
 
 /**
@@ -93,18 +93,9 @@ trait ZookeeperServerTest extends BeforeAndAfterAll { this: Suite with ScalaFutu
   private val clients = Lock(ListBuffer.empty[CuratorFramework])
   private val twitterClients = Lock(ListBuffer.empty[ZkClient])
 
-  def zkClient(retryPolicy: RetryPolicy = NoRetryPolicy, namespace: Option[String] = None,
-    username: Option[String] = None, password: Option[String] = None): RichCuratorFramework = {
+  def zkClient(retryPolicy: RetryPolicy = NoRetryPolicy, namespace: Option[String] = None): RichCuratorFramework = {
     zkServer.start()
-    val builder = CuratorFrameworkFactory.builder()
-    builder.connectString(zkServer.connectUri)
-      .retryPolicy(retryPolicy)
-    (username, password) match {
-      case (Some(user), Some(pass)) =>
-        builder.authorization(Collections.singletonList(new AuthInfo("digest", s"$user:$pass".getBytes("UTF-8"))))
-      case _ =>
-    }
-    val client = builder.build()
+    val client = CuratorFrameworkFactory.newClient(zkServer.connectUri, retryPolicy)
     client.start()
     val actualClient = namespace.fold(client) { ns =>
       RichCuratorFramework(client).create(s"/$namespace").futureValue(Timeout(10.seconds))
@@ -117,11 +108,10 @@ trait ZookeeperServerTest extends BeforeAndAfterAll { this: Suite with ScalaFutu
 
   def twitterZkClient(): ZkClient = {
     zkServer.start()
-    import scala.collection.JavaConverters._
     val timeout = com.twitter.util.TimeConversions.intToTimeableNumber(10).minutes
     implicit val timer = com.twitter.util.Timer.Nil
 
-    val client = ZkClient(zkServer.connectUri, timeout).withAcl(Ids.OPEN_ACL_UNSAFE.asScala)
+    val client = ZkClient(zkServer.connectUri, timeout).withAcl(Ids.OPEN_ACL_UNSAFE.toSeq)
     twitterClients(_ += client)
     client
   }

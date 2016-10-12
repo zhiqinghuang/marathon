@@ -8,7 +8,7 @@ import akka.util.Timeout
 import com.typesafe.config.{ Config, ConfigFactory }
 import com.typesafe.scalalogging.StrictLogging
 import mesosphere.marathon.{ IntegrationTest => AnnotatedIntegrationTest }
-import org.scalatest.{ AppendedClues, BeforeAndAfter, BeforeAndAfterAll, BeforeAndAfterEach, FunSuite, FunSuiteLike, GivenWhenThen, Matchers, OptionValues, TryValues, WordSpec, WordSpecLike }
+import org.scalatest.{ AppendedClues, BeforeAndAfter, BeforeAndAfterAll, BeforeAndAfterEach, FunSuite, FunSuiteLike, GivenWhenThen, Matchers, OptionValues, Suite, TryValues, WordSpec, WordSpecLike }
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
@@ -30,12 +30,7 @@ trait UnitTestLike extends WordSpecLike
 
 abstract class UnitTest extends WordSpec with UnitTestLike
 
-@AnnotatedIntegrationTest
-trait IntegrationTestLike extends UnitTestLike
-
-abstract class IntegrationTest extends UnitTest with IntegrationTestLike
-
-trait AkkaUnitTestLike extends UnitTestLike with BeforeAndAfterAll {
+trait AkkaTest extends Suite with BeforeAndAfterAll with FutureTestSupport {
   protected lazy val akkaConfig: Config = ConfigFactory.load
   implicit lazy val system = ActorSystem(suiteName, akkaConfig)
   implicit lazy val scheduler = system.scheduler
@@ -48,6 +43,13 @@ trait AkkaUnitTestLike extends UnitTestLike with BeforeAndAfterAll {
     super.afterAll
   }
 }
+
+@AnnotatedIntegrationTest
+trait IntegrationTestLike extends UnitTestLike with IntegrationFutureTestSupport
+
+abstract class IntegrationTest extends UnitTest with IntegrationTestLike
+
+trait AkkaUnitTestLike extends UnitTestLike with AkkaTest
 
 abstract class AkkaUnitTest extends WordSpec with AkkaUnitTestLike
 
@@ -70,23 +72,11 @@ trait FunTestLike extends FunSuiteLike
 abstract class FunTest extends FunSuite with FunTestLike
 
 @AnnotatedIntegrationTest
-trait IntegrationFunTestLike extends FunTestLike
+trait IntegrationFunTestLike extends FunTestLike with IntegrationFutureTestSupport
 
 abstract class IntegrationFunTest extends FunTest with IntegrationFunTestLike
 
-trait AkkaFunTestLike extends FunTestLike with BeforeAndAfterAll {
-  protected lazy val akkaConfig: Config = ConfigFactory.load
-  implicit lazy val system = ActorSystem(suiteName, akkaConfig)
-  implicit lazy val scheduler = system.scheduler
-  implicit lazy val mat = ActorMaterializer()
-  implicit lazy val ctx = system.dispatcher
-  implicit val askTimeout = Timeout(patienceConfig.timeout.toMillis, TimeUnit.MILLISECONDS)
-
-  abstract override def afterAll(): Unit = {
-    Await.result(system.terminate(), Duration.Inf)
-    super.afterAll
-  }
-}
+trait AkkaFunTestLike extends FunTestLike with AkkaTest
 
 abstract class AkkaFunTest extends FunTest with AkkaFunTestLike
 

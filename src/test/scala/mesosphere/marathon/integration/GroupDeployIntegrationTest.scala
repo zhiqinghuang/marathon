@@ -1,23 +1,17 @@
 package mesosphere.marathon
 package integration
 
+import mesosphere.AkkaIntegrationFunTest
 import mesosphere.marathon.api.v2.json.GroupUpdate
 import mesosphere.marathon.integration.setup.{ EmbeddedMarathonTest, IntegrationHealthCheck, WaitTestSupport }
 import mesosphere.marathon.state.{ AppDefinition, PathId, UpgradeStrategy }
-import mesosphere.marathon.test.{ MarathonActorSupport, MarathonSpec }
 import org.apache.http.HttpStatus
-import org.scalatest._
 import spray.http.DateTime
 
 import scala.concurrent.duration._
 
 @IntegrationTest
-class GroupDeployIntegrationTest
-    extends MarathonSpec
-    with EmbeddedMarathonTest
-    with MarathonActorSupport
-    with BeforeAndAfter
-    with GivenWhenThen {
+class GroupDeployIntegrationTest extends AkkaIntegrationFunTest with EmbeddedMarathonTest {
 
   //clean up state before running the test case
   before(cleanUp())

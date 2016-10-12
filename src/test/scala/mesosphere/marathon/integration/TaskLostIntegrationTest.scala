@@ -101,7 +101,8 @@ class TaskLostIntegrationTest extends AkkaIntegrationFunTest with EmbeddedMarath
     waitForEventMatching("Task is declared lost") { matchEvent("TASK_LOST", task) }
 
     Then("The task is killed due to GC timeout and a replacement is started")
-    val marathonName = ProcessKeeper.processNames.find(_.startsWith("marathon")).getOrElse(fail("no Marathon process found"))
+    // this is no longer applicable
+    //val marathonName = ProcessKeeper.processNames.find(_.startsWith("marathon")).getOrElse(fail("no Marathon process found"))
 
     val replacement = waitForTasks(app.id, 1).head
     replacement should not be task

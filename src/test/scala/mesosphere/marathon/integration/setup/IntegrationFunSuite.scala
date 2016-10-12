@@ -1,12 +1,9 @@
 package mesosphere.marathon.integration.setup
 
-import akka.actor.ActorSystem
 import mesosphere.marathon.state.PathId
 import org.joda.time.DateTime
-import org.scalactic.source.Position
 import org.scalatest._
 
-import scala.collection.mutable
 import scala.concurrent.duration._
 
 /**
@@ -15,37 +12,6 @@ import scala.concurrent.duration._
   * So it is not desirable, that these kind of tests run every time all the unit tests run.
   */
 object IntegrationTag extends Tag("mesosphere.marathon.IntegrationTest")
-
-/**
-  * Convenience trait, which will mark all test cases as integration tests.
-  */
-trait IntegrationFunSuite extends FunSuite {
-
-  override protected def test(testName: String, testTags: Tag*)(testFun: => Any)(implicit pos: Position): Unit = {
-    super.test(testName, IntegrationTag +: testTags: _*)(testFun)
-  }
-}
-
-/**
-  * Trait for running external marathon instances.
-  */
-trait ExternalMarathonIntegrationTest {
-
-  implicit lazy val system = ActorSystem()
-
-  def config: IntegrationTestConfig
-
-  def env = {
-    val envName = "MESOS_NATIVE_JAVA_LIBRARY"
-    if (sys.env.contains(envName)) sys.env else sys.env + (envName -> config.mesosLib)
-  }
-
-  def handleEvent(event: CallbackEvent): Unit
-}
-
-object ExternalMarathonIntegrationTest {
-  val healthChecks = mutable.ListBuffer.empty[IntegrationHealthCheck]
-}
 
 /**
   * Health check helper to define health behaviour of launched applications
@@ -83,7 +49,6 @@ class IntegrationHealthCheck(val appId: PathId, val versionId: String, val port:
 
   def forVersion(versionId: String, state: Boolean) = {
     val result = new IntegrationHealthCheck(appId, versionId, port, state)
-    ExternalMarathonIntegrationTest.healthChecks += result
     result
   }
 

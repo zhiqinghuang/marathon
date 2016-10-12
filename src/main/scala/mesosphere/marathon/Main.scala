@@ -1,17 +1,22 @@
 package mesosphere.marathon
 
+import java.lang.Thread.UncaughtExceptionHandler
+
 import com.google.common.util.concurrent.ServiceManager
 import com.google.inject.{ Guice, Module }
+import com.typesafe.scalalogging.StrictLogging
 import mesosphere.chaos.http.{ HttpModule, HttpService }
 import mesosphere.chaos.metrics.MetricsModule
 import mesosphere.marathon.api.MarathonRestModule
 import mesosphere.marathon.core.CoreGuiceModule
+import mesosphere.marathon.core.base.toRichRuntime
 import mesosphere.marathon.metrics.{ MetricsReporterModule, MetricsReporterService }
 import mesosphere.marathon.storage.StorageModule
 import org.slf4j.LoggerFactory
 import org.slf4j.bridge.SLF4JBridgeHandler
 
 import scala.collection.JavaConverters._
+import scala.concurrent.ExecutionContext
 
 class MarathonApp(args: Seq[String]) extends AutoCloseable {
   SLF4JBridgeHandler.removeHandlersForRootLogger()
@@ -125,8 +130,14 @@ class MarathonApp(args: Seq[String]) extends AutoCloseable {
   }
 }
 
-object Main {
+object Main extends StrictLogging {
   def main(args: Array[String]): Unit = {
+    Thread.setDefaultUncaughtExceptionHandler(new UncaughtExceptionHandler {
+      override def uncaughtException(thread: Thread, throwable: Throwable): Unit = {
+        logger.error(s"Terminating due to uncaught exception in thread ${thread.getName}:${thread.getId}", throwable)
+        Runtime.getRuntime.asyncExit()(ExecutionContext.global)
+      }
+    })
     val app = new MarathonApp(args.toVector)
     app.start()
   }

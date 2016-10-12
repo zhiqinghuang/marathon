@@ -4,7 +4,7 @@ import java.security.Permission
 
 import akka.actor.{ ActorSystem, Scheduler }
 import mesosphere.marathon.util.{ Lock, Retry }
-import org.scalatest.{ BeforeAndAfterAll, Suite }
+import org.scalatest.Suite
 
 import scala.collection.mutable
 import scala.concurrent.Future
@@ -14,30 +14,13 @@ import scala.util.control.NonFatal
 /**
   * Mixin that will disable System.exit while the suite is running.
   */
-trait ExitDisabledTest extends BeforeAndAfterAll { self: Suite =>
-  private val exitsCalled = Lock(mutable.ListBuffer.empty[Int])
-  private var securityManager = Option.empty[SecurityManager]
-  private var previousManager = Option.empty[SecurityManager]
-
-  override def beforeAll(): Unit = {
-    val newManager = new ExitDisabledSecurityManager()
-    securityManager = Some(newManager)
-    previousManager = Option(System.getSecurityManager)
-    System.setSecurityManager(newManager)
-    // intentionally last so that we disable exit as soon as possible
-    super.beforeAll()
-  }
-
-  override def afterAll(): Unit = {
-    System.setSecurityManager(previousManager.orNull)
-    exitsCalled(_.clear())
-    super.afterAll()
-  }
+trait ExitDisabledTest extends Suite {
 
   def exitCalled(desiredCode: Int)(implicit system: ActorSystem, scheduler: Scheduler): Future[Boolean] = {
     implicit val ctx = system.dispatcher
-    Retry.blocking("Check for exit", 500, 1.micro, 5.seconds) {
-      if (exitsCalled(_.contains(desiredCode))) {
+    Retry.blocking("Check for exit", Int.MaxValue, 1.micro, 5.seconds) {
+      if (ExitDisabledTest.exitsCalled(_.contains(desiredCode))) {
+        ExitDisabledTest.exitsCalled(e => e.remove(e.indexOf(desiredCode)))
         true
       } else {
         throw new Exception("Did not find desired exit code.")
@@ -46,10 +29,15 @@ trait ExitDisabledTest extends BeforeAndAfterAll { self: Suite =>
       case NonFatal(_) => false
     }
   }
+}
+
+object ExitDisabledTest {
+  private val exitsCalled = Lock(mutable.ArrayBuffer.empty[Int])
+  System.setSecurityManager(new ExitDisabledSecurityManager)
 
   private class ExitDisabledSecurityManager() extends SecurityManager {
     override def checkExit(i: Int): Unit = {
-      exitsCalled(_ += i)
+      exitsCalled(_ :+ i)
       throw new IllegalStateException(s"Attempted to call exit with code: $i")
     }
 

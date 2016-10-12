@@ -4,13 +4,11 @@ package integration
 import java.io.File
 
 import com.google.common.io.Files
-import com.typesafe.scalalogging.StrictLogging
+import mesosphere.AkkaIntegrationFunTest
 import mesosphere.marathon.integration.setup._
-import mesosphere.marathon.test.{ MarathonActorSupport, MarathonSpec }
 
 @IntegrationTest
-class ArtifactsIntegrationTest extends MarathonSpec
-    with EmbeddedMarathonTest with StrictLogging with MarathonActorSupport {
+class ArtifactsIntegrationTest extends AkkaIntegrationFunTest with EmbeddedMarathonTest {
   var artifactsDir: File = Files.createTempDir()
 
   override val marathonArgs = Map("artifact_store" -> s"file://${artifactsDir.toString}")

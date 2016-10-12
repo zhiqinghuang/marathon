@@ -499,8 +499,7 @@ class AppDeployIntegrationTest extends AkkaIntegrationFunTest with EmbeddedMarat
       "deployment_success")(30.seconds)
 
     val Seq(apiPostEvent) = events("api_post_event")
-    val xx = apiPostEvent.info("appDefinition").asInstanceOf[Map[String, Any]]("id").asInstanceOf[String]
-    xx should be(appId)
+    apiPostEvent.info("appDefinition").asInstanceOf[Map[String, Any]]("id").asInstanceOf[String] should be(appId)
 
     val Seq(groupChangeSuccess) = events("group_change_success")
     groupChangeSuccess.info("groupId").asInstanceOf[String] should be(appIdPath.parent.toString)

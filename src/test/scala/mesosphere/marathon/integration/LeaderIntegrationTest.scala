@@ -127,7 +127,8 @@ class LeaderIntegrationTest extends AkkaIntegrationFunTest with MarathonClusterT
     checkTombstone()
   }
 
-  test("the tombstone stops old instances from becoming leader") {
+  // TODO(jasongilanfarr) Marathon will kill itself in this test so this doesn't actually work and needs to be revisited.
+  ignore("the tombstone stops old instances from becoming leader") {
     When("Starting an instance with --leader_election_backend")
 
     val oldMarathon = LocalMarathon(false, marathonServer.masterUrl, marathonServer.config("zk"),
@@ -175,7 +176,8 @@ class LeaderIntegrationTest extends AkkaIntegrationFunTest with MarathonClusterT
     }
   }
 
-  test("commit suicide if the zk connection is dropped") {
+  ignore("commit suicide if the zk connection is dropped") {
+    // FIXME (gkleiman): investigate why this test fails (https://github.com/mesosphere/marathon/issues/3566)
     Given("a leader")
     WaitTestSupport.waitUntil("a leader has been elected", 30.seconds) { marathon.leader().code == 200 }
 

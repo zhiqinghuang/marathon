@@ -1,16 +1,11 @@
 package mesosphere.marathon
 package integration
 
+import mesosphere.AkkaIntegrationFunTest
 import mesosphere.marathon.integration.setup.EmbeddedMarathonTest
-import mesosphere.marathon.test.{ MarathonActorSupport, MarathonSpec }
-import org.scalatest._
 
 @IntegrationTest
-class EventSubscribersIntegrationTest
-    extends MarathonSpec
-    with EmbeddedMarathonTest
-    with MarathonActorSupport
-    with BeforeAndAfter {
+class EventSubscribersIntegrationTest extends AkkaIntegrationFunTest with EmbeddedMarathonTest {
 
   before(cleanUp())
 

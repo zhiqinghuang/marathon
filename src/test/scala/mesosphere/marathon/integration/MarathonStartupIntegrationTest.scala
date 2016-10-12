@@ -12,12 +12,12 @@ class MarathonStartupIntegrationTest extends AkkaIntegrationTest with EmbeddedMa
 
       When("starting another Marathon process using an HTTP port that is already bound")
 
-      val conflict = LocalMarathon(false, marathonServer.masterUrl, marathonServer.zkUrl,
-        conf = Map("http_port" -> marathonServer.httpPort.toString))
+      val conflict = new MarathonApp(Seq("--master", marathonServer.masterUrl,
+        "--zk", marathonServer.zkUrl, "--http_port", marathonServer.httpPort.toString))
 
       Then("An uncaught exception should be thrown")
       intercept[Throwable] {
-        conflict.marathon.start()
+        conflict.start()
       }
       conflict.close()
     }

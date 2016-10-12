@@ -27,8 +27,7 @@ class SingleAppScalingTest extends AkkaIntegrationFunTest with ZookeeperServerTe
     "max_tasks_per_offer" -> maxTasksPerOffer,
     "task_launch_timeout" -> "20000",
     "task_launch_confirm_timeout" -> "1000"),
-    main = (args: Seq[String]) => new MarathonWithSimulatedMesos(args))
-
+    mainClass = "mesosphere.mesos.simulation.SimulateMesosMain")
 
   override lazy val marathonUrl: String = s"http://localhost:${marathonServer.httpPort}"
   override lazy val testBasePath: PathId = PathId.empty

@@ -4,8 +4,9 @@ package integration.setup
 import java.io.File
 import java.nio.file.Files
 import java.util.UUID
-import java.util.concurrent.{ ConcurrentLinkedQueue, Semaphore }
+import java.util.concurrent.ConcurrentLinkedQueue
 
+import akka.Done
 import akka.actor.{ ActorSystem, Scheduler }
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.client.RequestBuilding.Get
@@ -28,13 +29,15 @@ import org.apache.mesos.Protos
 import org.scalatest.concurrent.PatienceConfiguration.Timeout
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{ BeforeAndAfterAll, Suite }
+import org.slf4j.LoggerFactory
 import play.api.libs.json.{ JsString, Json }
 
 import scala.annotation.tailrec
+import scala.async.Async.{ async, await }
 import scala.collection.mutable
 import scala.concurrent.duration._
-import scala.concurrent.{ Await, ExecutionContext, Future }
-import scala.sys.process.Process
+import scala.concurrent.{ ExecutionContext, Future }
+import scala.sys.process.{ Process, ProcessLogger }
 import scala.util.Try
 
 case class LocalMarathon(
@@ -42,16 +45,16 @@ case class LocalMarathon(
     masterUrl: String,
     zkUrl: String,
     conf: Map[String, String] = Map.empty,
-    main: (Seq[String] => MarathonApp) = (args: Seq[String]) => new MarathonApp(args))(implicit
+    mainClass: String = "mesosphere.marathon.Main",
+    logStdout: Boolean = false)(implicit
   system: ActorSystem,
     mat: Materializer,
     ctx: ExecutionContext,
     scheduler: Scheduler) extends AutoCloseable {
 
-  private val semaphore = new Semaphore(0)
-  private var started = false
-
   lazy val httpPort = PortAllocator.ephemeralPort()
+  private val logger = LoggerFactory.getLogger(s"LocalMarathon:$httpPort")
+
   private val workDir = {
     val f = Files.createTempDirectory(s"marathon-$httpPort").toFile
     f.deleteOnExit()
@@ -82,46 +85,57 @@ case class LocalMarathon(
 
   val args = config.flatMap { case (k, v) => Seq(s"--$k", v) }(collection.breakOut)
 
-  private var closing = false
-  lazy val marathon = main(args)
-
-  private val thread = new Thread(new Runnable {
-    override def run(): Unit = {
-      while (!closing) {
-        marathon.start()
-        Try(semaphore.acquire())
-      }
-    }
-  }, s"marathon-$httpPort")
+  private var marathon = Option.empty[Process]
 
   if (autoStart) {
     start()
   }
 
-  def start(): Unit = {
-    if (!started) {
-      if (thread.getState == Thread.State.NEW) {
-        thread.start()
-      }
-      started = true
-      semaphore.release()
-      Retry(s"marathon-$httpPort") {
-        Http(system).singleRequest(Get(s"http://localhost:$httpPort/version"))
-      }
+  // it'd be great to be able to execute in memory, but we can't due to GuiceFilter using a static :(
+  private val processBuilder = {
+    val java = sys.props.get("java.home").fold("java")(_ + "/bin/java")
+    val cp = sys.props.getOrElse("java.class.path", "target/classes")
+    val memSettings = s"-Xmx${Runtime.getRuntime.maxMemory()}"
+    val cmd = Seq(java, memSettings, "-classpath", cp, mainClass) ++ args
+    Process(cmd, workDir, sys.env.toSeq: _*)
+  }
+
+  private def create(): Process = {
+    if (logStdout) {
+      processBuilder.run(ProcessLogger(logger.info, logger.warn))
+    } else {
+      processBuilder.run()
     }
   }
 
-  def stop(): Unit = if (started) {
-    marathon.shutdownAndWait()
-    started = false
+  def start(): Future[Done] = {
+    if (marathon.isEmpty) {
+      marathon = Some(create())
+      val future = Retry(s"marathon-$httpPort", Int.MaxValue, 1.milli, 5.seconds) {
+        async {
+          val result = await(Http(system).singleRequest(Get(s"http://localhost:$httpPort/v2/leader")))
+          if (result.status.isSuccess()) { // linter:ignore //async/await
+            Done
+          } else {
+            throw new Exception("Marathon not ready yet.")
+          }
+        }
+      }
+      future.onFailure { case _ => marathon = Option.empty[Process] }
+      future
+    } else {
+      Future.successful(Done)
+    }
+  }
+
+  def stop(): Unit = {
+    marathon.foreach(_.destroy())
+    marathon = Option.empty[Process]
   }
 
   override def close(): Unit = {
-    closing = true
-    Try(stop())
-    thread.interrupt()
-    thread.join()
-    Await.result(system.terminate(), 5.seconds)
+    stop()
+    Try(FileUtils.deleteDirectory(workDir))
   }
 }
 
@@ -198,7 +212,7 @@ trait MarathonTest extends BeforeAndAfterAll { this: Suite with StrictLogging wi
     super.afterAll()
   }
 
-  def killAppProxies(): Unit = {
+  private def killAppProxies(): Unit = {
     val PIDRE = """^\s*(\d+)\s+(.*)$""".r
     val allJavaIds = Process("jps -lv").!!.split("\n")
     val pids = allJavaIds.collect {
@@ -424,8 +438,7 @@ trait LocalMarathonTest
 
   abstract override def beforeAll(): Unit = {
     super.beforeAll()
-    marathonServer.start()
-    Retry.blocking("Wait for marathon to start", maxAttempts = 60)(marathon.info).futureValue(Timeout(10.seconds))
+    marathonServer.start().futureValue(Timeout(60.seconds))
     callbackEndpoint
   }
 
@@ -458,10 +471,7 @@ trait MarathonClusterTest extends ZookeeperServerTest with MesosLocalTest with L
 
   override def beforeAll(): Unit = {
     super.beforeAll()
-    additionalMarathons.foreach(_.start())
-    marathonFacades.foreach { facade =>
-      Retry.blocking("Wait for marathon to start", maxAttempts = 60)(facade.info).futureValue(Timeout(10.seconds))
-    }
+    Future.sequence(additionalMarathons.map(_.start())).futureValue(Timeout(60.seconds))
   }
 
   override def afterAll(): Unit = {

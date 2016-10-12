@@ -310,7 +310,6 @@ trait MesosLocalTest extends MesosTest with BeforeAndAfterAll { this: Suite with
 
   abstract override def afterAll(): Unit = {
     mesosLocalServer.close()
-    system.terminate().futureValue
     super.afterAll()
   }
 }
@@ -340,7 +339,6 @@ trait MesosClusterTest extends MesosTest
 
   abstract override def afterAll(): Unit = {
     mesosCluster.close()
-    system.terminate().futureValue
     super.afterAll()
   }
 }

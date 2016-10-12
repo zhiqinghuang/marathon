@@ -1,20 +1,15 @@
 package mesosphere.marathon
 package integration
 
+import mesosphere.AkkaIntegrationFunTest
 import mesosphere.marathon.core.health.MarathonHttpHealthCheck
 import mesosphere.marathon.integration.setup._
 import mesosphere.marathon.state._
-import mesosphere.marathon.test.{ MarathonActorSupport, MarathonSpec }
-import org.scalatest.GivenWhenThen
 
 import scala.concurrent.duration._
 
 @IntegrationTest
-class GracefulTaskKillIntegrationTest
-    extends MarathonSpec
-    with EmbeddedMarathonTest
-    with MarathonActorSupport
-    with GivenWhenThen {
+class GracefulTaskKillIntegrationTest extends AkkaIntegrationFunTest with EmbeddedMarathonTest {
 
   before {
     cleanUp()
