@@ -40,18 +40,32 @@ import scala.concurrent.{ ExecutionContext, Future }
 import scala.sys.process.{ Process, ProcessLogger }
 import scala.util.Try
 
+/**
+  * Runs a marathon server for the given test suite
+  * @param autoStart true if marathon should be started immediately
+  * @param suite The test suite that owns this marathon
+  * @param masterUrl The mesos master url
+  * @param zkUrl The ZK url
+  * @param conf any particular configuration
+  * @param mainClass The main class
+  * @param logStdout True if logs should forward to stdout
+  */
 case class LocalMarathon(
     autoStart: Boolean = true,
+    suite: String,
     masterUrl: String,
     zkUrl: String,
     conf: Map[String, String] = Map.empty,
     mainClass: String = "mesosphere.marathon.Main",
-    logStdout: Boolean = false)(implicit
+    logStdout: Boolean = true)(implicit
   system: ActorSystem,
     mat: Materializer,
     ctx: ExecutionContext,
     scheduler: Scheduler) extends AutoCloseable {
 
+  system.registerOnTermination(close())
+
+  lazy val uuid = UUID.randomUUID.toString
   lazy val httpPort = PortAllocator.ephemeralPort()
   private val logger = LoggerFactory.getLogger(s"LocalMarathon:$httpPort")
 
@@ -96,7 +110,7 @@ case class LocalMarathon(
     val java = sys.props.get("java.home").fold("java")(_ + "/bin/java")
     val cp = sys.props.getOrElse("java.class.path", "target/classes")
     val memSettings = s"-Xmx${Runtime.getRuntime.maxMemory()}"
-    val cmd = Seq(java, memSettings, "-classpath", cp, mainClass) ++ args
+    val cmd = Seq(java, memSettings, s"-DmarathonUUID=$uuid -DtestSuite=$suite", "-classpath", cp, mainClass) ++ args
     Process(cmd, workDir, sys.env.toSeq: _*)
   }
 
@@ -131,6 +145,14 @@ case class LocalMarathon(
   def stop(): Unit = {
     marathon.foreach(_.destroy())
     marathon = Option.empty[Process]
+    val PIDRE = """^\s*(\d+)\s+(\S*)\s*(.*)$""".r
+
+    val pids = Process("jps -lv").!!.split("\n").collect {
+      case PIDRE(pid, main, jvmArgs) if main.contains(mainClass) && jvmArgs.contains(uuid) => pid
+    }
+    if (pids.nonEmpty) {
+      Process(s"kill -9 ${pids.mkString(" ")}").!
+    }
   }
 
   override def close(): Unit = {
@@ -139,7 +161,11 @@ case class LocalMarathon(
   }
 }
 
-trait MarathonTest extends BeforeAndAfterAll { this: Suite with StrictLogging with ScalaFutures =>
+/**
+  * base trait that spins up/tears down a marathon and has all of the original tooling from
+  * SingleMarathonIntegrationTest.
+  */
+trait MarathonTest extends Suite with StrictLogging with ScalaFutures with BeforeAndAfterAll {
   def marathonUrl: String
   def marathon: MarathonFacade
   def mesos: MesosFacade
@@ -152,6 +178,8 @@ trait MarathonTest extends BeforeAndAfterAll { this: Suite with StrictLogging wi
   implicit val mat: Materializer
   implicit val ctx: ExecutionContext
   implicit val scheduler: Scheduler
+
+  system.registerOnTermination(killAppProxies())
 
   protected val events = new ConcurrentLinkedQueue[CallbackEvent]()
   protected val healthChecks = Lock(mutable.ListBuffer.empty[IntegrationHealthCheck])
@@ -234,11 +262,11 @@ trait MarathonTest extends BeforeAndAfterAll { this: Suite with StrictLogging wi
     val main = classOf[AppMock].getName
     val id = UUID.randomUUID.toString
     appProxyIds(_ += id)
-    s"""$javaExecutable -Xmx64m -DappProxyId=$id -classpath $classPath $main"""
+    s"""$javaExecutable -Xmx64m -DappProxyId=$id -DtestSuite=$suiteName -classpath $classPath $main"""
   }
 
   lazy val appProxyHealthChecks = Set(
-    MarathonHttpHealthCheck(gracePeriod = 5.second, interval = 1.second, maxConsecutiveFailures = 2))
+    MarathonHttpHealthCheck(gracePeriod = 3.second, interval = 1.second, maxConsecutiveFailures = 2))
 
   def appProxy(appId: PathId, versionId: String, instances: Int,
     withHealth: Boolean = true, dependencies: Set[PathId] = Set.empty): AppDefinition = {
@@ -366,7 +394,7 @@ trait MarathonTest extends BeforeAndAfterAll { this: Suite with StrictLogging wi
 
   def waitForEventWith(
     kind: String,
-    fn: CallbackEvent => Boolean, maxWait: FiniteDuration = 30.seconds): CallbackEvent = {
+    fn: CallbackEvent => Boolean, maxWait: FiniteDuration = 45.seconds): CallbackEvent = {
     waitForEventMatching(s"event $kind to arrive", maxWait) { event =>
       event.eventType == kind && fn(event)
     }
@@ -374,7 +402,7 @@ trait MarathonTest extends BeforeAndAfterAll { this: Suite with StrictLogging wi
 
   def waitForEventMatching(
     description: String,
-    maxWait: FiniteDuration = 30.seconds)(fn: CallbackEvent => Boolean): CallbackEvent = {
+    maxWait: FiniteDuration = 45.seconds)(fn: CallbackEvent => Boolean): CallbackEvent = {
     @tailrec
     def nextEvent: Option[CallbackEvent] = if (events.isEmpty) None else {
       val event = events.poll()
@@ -386,7 +414,7 @@ trait MarathonTest extends BeforeAndAfterAll { this: Suite with StrictLogging wi
   /**
     * Wait for the events of the given kinds (=types).
     */
-  def waitForEvents(kinds: String*)(maxWait: FiniteDuration = 30.seconds): Map[String, Seq[CallbackEvent]] = {
+  def waitForEvents(kinds: String*)(maxWait: FiniteDuration = 45.seconds): Map[String, Seq[CallbackEvent]] = {
 
     val deadline = maxWait.fromNow
 
@@ -413,7 +441,7 @@ trait MarathonTest extends BeforeAndAfterAll { this: Suite with StrictLogging wi
     receivedEventsForKinds.groupBy(_.eventType)
   }
 
-  def waitForChange(change: RestResult[ITDeploymentResult], maxWait: FiniteDuration = 30.seconds): CallbackEvent = {
+  def waitForChange(change: RestResult[ITDeploymentResult], maxWait: FiniteDuration = 45.seconds): CallbackEvent = {
     waitForDeploymentId(change.value.deploymentId, maxWait)
   }
 }
@@ -422,12 +450,13 @@ trait LocalMarathonTest
     extends ExitDisabledTest
     with MarathonTest
     with BeforeAndAfterAll
+    with ZookeeperServerTest
+    with MesosTest
     with ScalaFutures {
-  this: Suite with StrictLogging with ZookeeperServerTest with MesosTest =>
 
   val marathonArgs = Map.empty[String, String]
 
-  lazy val marathonServer = LocalMarathon(autoStart = false, masterUrl = mesosMasterUrl,
+  lazy val marathonServer = LocalMarathon(autoStart = false, suite = suiteName, masterUrl = mesosMasterUrl,
     zkUrl = s"zk://${zkServer.connectUri}/marathon",
     conf = marathonArgs)
   lazy val marathonUrl = s"http://localhost:${marathonServer.httpPort}"
@@ -448,20 +477,12 @@ trait LocalMarathonTest
   }
 }
 
-trait EmbeddedMarathonTest extends ZookeeperServerTest with MesosLocalTest with LocalMarathonTest {
-  this: Suite with StrictLogging =>
-}
-
-trait EmbeddedMarathonMesosClusterTest extends ZookeeperServerTest with MesosClusterTest with LocalMarathonTest {
-  this: Suite with StrictLogging =>
-}
-
-trait MarathonClusterTest extends ZookeeperServerTest with MesosLocalTest with LocalMarathonTest {
-  this: Suite with StrictLogging =>
-
+trait EmbeddedMarathonTest extends Suite with StrictLogging with ZookeeperServerTest with MesosLocalTest with LocalMarathonTest
+trait EmbeddedMarathonMesosClusterTest extends Suite with StrictLogging with ZookeeperServerTest with MesosClusterTest with LocalMarathonTest
+trait MarathonClusterTest extends Suite with StrictLogging with ZookeeperServerTest with MesosLocalTest with LocalMarathonTest {
   val numAdditionalMarathons = 2
   lazy val additionalMarathons = 0.until(numAdditionalMarathons).map { _ =>
-    LocalMarathon(autoStart = false, masterUrl = mesosMasterUrl,
+    LocalMarathon(autoStart = false, suite = suiteName, masterUrl = mesosMasterUrl,
       zkUrl = s"zk://${zkServer.connectUri}/marathon",
       conf = marathonArgs)
   }

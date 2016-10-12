@@ -26,8 +26,8 @@ import scala.util.Try
   */
 case class MesosLocal(numSlaves: Int = 1, autoStart: Boolean = true,
     containerizers: Option[String] = None,
-    logStdout: Boolean = false,
-    waitForStart: Duration = 5.seconds)(implicit
+    logStdout: Boolean = true,
+    waitForStart: Duration = 30.seconds)(implicit
   system: ActorSystem,
     mat: Materializer,
     ctx: ExecutionContext,
@@ -109,7 +109,7 @@ case class MesosLocal(numSlaves: Int = 1, autoStart: Boolean = true,
 
   def start(): Unit = if (mesosLocal.isEmpty) {
     mesosLocal = Some(create())
-    val mesosUp = Retry(s"mesos-local-$port") {
+    val mesosUp = Retry(s"mesos-local-$port", Int.MaxValue, maxDelay = waitForStart) {
       Http(system).singleRequest(Get(s"http://localhost:$port/version"))
     }
     Await.result(mesosUp, waitForStart)

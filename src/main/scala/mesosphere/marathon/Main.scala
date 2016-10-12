@@ -18,13 +18,20 @@ import org.slf4j.bridge.SLF4JBridgeHandler
 import scala.collection.JavaConverters._
 import scala.concurrent.ExecutionContext
 
-class MarathonApp(args: Seq[String]) extends AutoCloseable {
-  SLF4JBridgeHandler.removeHandlersForRootLogger()
-  SLF4JBridgeHandler.install()
-
+class MarathonApp(args: Seq[String]) extends AutoCloseable with StrictLogging {
   private var running = false
   private val log = LoggerFactory.getLogger(getClass.getName)
   val conf = new AllConf(args)
+
+  SLF4JBridgeHandler.removeHandlersForRootLogger()
+  SLF4JBridgeHandler.install()
+  Thread.setDefaultUncaughtExceptionHandler(new UncaughtExceptionHandler {
+    override def uncaughtException(thread: Thread, throwable: Throwable): Unit = {
+      logger.error(s"Terminating ${conf.httpPort()} due to uncaught exception in thread ${thread.getName}:${thread.getId}", throwable)
+      Runtime.getRuntime.asyncExit()(ExecutionContext.global)
+    }
+  })
+
   protected def modules: Seq[Module] = {
     Seq(
       new HttpModule(conf),
@@ -130,14 +137,8 @@ class MarathonApp(args: Seq[String]) extends AutoCloseable {
   }
 }
 
-object Main extends StrictLogging {
+object Main {
   def main(args: Array[String]): Unit = {
-    Thread.setDefaultUncaughtExceptionHandler(new UncaughtExceptionHandler {
-      override def uncaughtException(thread: Thread, throwable: Throwable): Unit = {
-        logger.error(s"Terminating due to uncaught exception in thread ${thread.getName}:${thread.getId}", throwable)
-        Runtime.getRuntime.asyncExit()(ExecutionContext.global)
-      }
-    })
     val app = new MarathonApp(args.toVector)
     app.start()
   }

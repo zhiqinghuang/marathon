@@ -131,7 +131,7 @@ class LeaderIntegrationTest extends AkkaIntegrationFunTest with MarathonClusterT
   ignore("the tombstone stops old instances from becoming leader") {
     When("Starting an instance with --leader_election_backend")
 
-    val oldMarathon = LocalMarathon(false, marathonServer.masterUrl, marathonServer.config("zk"),
+    val oldMarathon = LocalMarathon(false, suite = suiteName, marathonServer.masterUrl, marathonServer.config("zk"),
       Map("leader_election_backend" -> "twitter_commons"))
     try {
       oldMarathon.start()

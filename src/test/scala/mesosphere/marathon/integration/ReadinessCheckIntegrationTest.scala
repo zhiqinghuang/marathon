@@ -11,13 +11,14 @@ import mesosphere.marathon.core.readiness.ReadinessCheck
 import mesosphere.marathon.integration.setup._
 import mesosphere.marathon.raml.Resources
 import mesosphere.marathon.state._
+import mesosphere.marathon.util.Lock
 import org.apache.commons.io.FileUtils
 
 import scala.collection.immutable.Seq
 import scala.collection.mutable
 import scala.concurrent.duration._
-import scala.util.Try
 import scala.sys.process._
+import scala.util.Try
 
 @IntegrationTest
 class ReadinessCheckIntegrationTest extends AkkaIntegrationFunTest with EmbeddedMarathonTest {
@@ -25,7 +26,7 @@ class ReadinessCheckIntegrationTest extends AkkaIntegrationFunTest with Embedded
   //clean up state before running the test case
   before(cleanUp())
   after {
-    idsToKill.foreach { id =>
+    idsToKill(_.foreach { id =>
       val PIDRE = """^\s*(\d+)\s+(\S*)\s*(.*)$""".r
 
       val pids = "jps -lv".!!.split("\n").collect {
@@ -34,8 +35,8 @@ class ReadinessCheckIntegrationTest extends AkkaIntegrationFunTest with Embedded
       if (pids.nonEmpty) {
         s"kill -9 ${pids.mkString(" ")}".!
       }
-    }
-    idsToKill.clear()
+    })
+    idsToKill(_.clear())
   }
 
   test("A deployment of an application with readiness checks (no health) does finish when the plan is ready") {
@@ -110,7 +111,7 @@ class ReadinessCheckIntegrationTest extends AkkaIntegrationFunTest with Embedded
     )
   }
 
-  private var idsToKill = mutable.Buffer.empty[UUID]
+  private val idsToKill = Lock(mutable.Buffer.empty[UUID])
   /**
     * Create a shell script that can start a service mock
     */
@@ -119,7 +120,7 @@ class ReadinessCheckIntegrationTest extends AkkaIntegrationFunTest with Embedded
     val classPath = sys.props.getOrElse("java.class.path", "target/classes").replaceAll(" ", "")
     val main = classOf[ServiceMock].getName
     val id = UUID.randomUUID()
-    idsToKill += id
+    idsToKill(_ += id)
     val run = s"""$javaExecutable -Xmx64m -DserviceMockId=$id -classpath $classPath $main"""
     val file = File.createTempFile("serviceProxy", ".sh")
     file.deleteOnExit()

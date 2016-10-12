@@ -7,7 +7,6 @@ import mesosphere.marathon.integration.facades.{ITDeploymentResult, MarathonFaca
 import mesosphere.marathon.integration.setup._
 import mesosphere.marathon.state.{AppDefinition, PathId}
 import mesosphere.marathon.util.Retry
-import mesosphere.mesos.simulation.MarathonWithSimulatedMesos
 import org.scalatest.concurrent.PatienceConfiguration.Timeout
 import org.slf4j.LoggerFactory
 import play.api.libs.json._
@@ -23,7 +22,7 @@ object SingleAppScalingTest {
 class SingleAppScalingTest extends AkkaIntegrationFunTest with ZookeeperServerTest with SimulatedMesosTest with MarathonTest {
   val maxTasksPerOffer = Option(System.getenv("MARATHON_MAX_TASKS_PER_OFFER")).getOrElse("1")
 
-  lazy val marathonServer = LocalMarathon(false, "", zkUrl = s"zk://${zkServer.connectUri}/marathon", conf = Map(
+  lazy val marathonServer = LocalMarathon(false, suite = suiteName, "", zkUrl = s"zk://${zkServer.connectUri}/marathon", conf = Map(
     "max_tasks_per_offer" -> maxTasksPerOffer,
     "task_launch_timeout" -> "20000",
     "task_launch_confirm_timeout" -> "1000"),

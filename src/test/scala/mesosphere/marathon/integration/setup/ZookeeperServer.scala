@@ -1,9 +1,11 @@
 package mesosphere.marathon.integration.setup
 
+import java.lang.Thread.UncaughtExceptionHandler
 import java.nio.file.{ Files, Path }
 import java.util.concurrent.Semaphore
 
 import com.twitter.zk.ZkClient
+import com.typesafe.scalalogging.StrictLogging
 import mesosphere.marathon.core.storage.store.impl.zk.{ NoRetryPolicy, RichCuratorFramework }
 import mesosphere.marathon.stream._
 import mesosphere.marathon.util.Lock
@@ -32,7 +34,7 @@ import scala.util.Try
   */
 class ZookeeperServer(
     autoStart: Boolean = true,
-    val port: Int = PortAllocator.ephemeralPort()) extends AutoCloseable {
+    val port: Int = PortAllocator.ephemeralPort()) extends AutoCloseable with StrictLogging {
   private var closing = false
   private val workDir: Path = Files.createTempDirectory("zk")
   private val semaphore = new Semaphore(0)
@@ -52,6 +54,11 @@ class ZookeeperServer(
       }
     }
   }, s"Zookeeper-$port")
+  thread.setUncaughtExceptionHandler(new UncaughtExceptionHandler {
+    override def uncaughtException(thread: Thread, throwable: Throwable): Unit = {
+      logger.error(s"Error in Zookeeper $port", throwable)
+    }
+  })
   private var started = false
   if (autoStart) {
     start()
