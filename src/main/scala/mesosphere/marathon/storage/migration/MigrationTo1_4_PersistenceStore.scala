@@ -4,10 +4,13 @@ import akka.Done
 import akka.stream.Materializer
 import akka.stream.scaladsl.{ Sink, Source }
 import com.typesafe.scalalogging.StrictLogging
+import mesosphere.marathon.Protos.MarathonTask
 import mesosphere.marathon.core.event.EventSubscribers
 import mesosphere.marathon.core.instance.Instance
 import mesosphere.marathon.core.pod.PodDefinition
 import mesosphere.marathon.core.storage.repository._
+import mesosphere.marathon.core.task.Task
+import mesosphere.marathon.core.task.tracker.impl.TaskSerializer
 import mesosphere.marathon.metrics.Metrics
 import mesosphere.marathon.state.{ AppDefinition, Group, MarathonTaskState, TaskFailure }
 import mesosphere.marathon.storage.LegacyStorageConfig
@@ -102,15 +105,17 @@ class MigrationTo1_4_PersistenceStore(migration: Migration)(implicit
       // basically, only one of the two existed.
       val oldTaskIds = await(oldTaskRepo.ids().runWith(Sink.seq))
       val (tasksToMigrateSource, storeToDeleteFrom) = if (oldTaskIds.nonEmpty) {
-        (Source(oldTaskIds).mapAsync(1)(oldTaskRepo.get).collect { case Some(t) => t }, oldTaskRepo)
+        (Source(oldTaskIds).mapAsync(1)(oldTaskRepo.getRaw).collect { case Some(t) => t }, oldTaskRepo)
       } else {
-        (taskRepository.ids().mapAsync(1)(taskRepository.get).collect { case Some(t) => t }, taskRepository)
+        (Source.empty[MarathonTask], taskRepository)
       }
 
       val migrateFromTasks = await {
-        tasksToMigrateSource.mapAsync(Int.MaxValue) { task =>
-          instanceRepository.store(Instance(task)).andThen {
-            case _ => storeToDeleteFrom.delete(task.taskId)
+        tasksToMigrateSource.mapAsync(Int.MaxValue) { proto =>
+          val instance = marathonTaskToInstance(proto)
+          val taskId = Task.Id(proto.getId)
+          instanceRepository.store(instance).andThen {
+            case _ => storeToDeleteFrom.delete(taskId)
           }
         }.runFold(0) { case (acc, _) => acc + 1 }.map("tasks" -> _)
       }
@@ -119,6 +124,11 @@ class MigrationTo1_4_PersistenceStore(migration: Migration)(implicit
 
       migrateFromTasks._1 -> (migrateFromTasks._2 + migrateFromInstances)
     }
+  }
+
+  private[this] def marathonTaskToInstance(proto: MarathonTask): Instance = {
+    // TODO: implement proper deserialization/conversion (DCOS-10332)
+    Instance(TaskSerializer.fromProto(proto))
   }
 
   private[this] def migrateDeployments(
