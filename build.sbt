@@ -118,6 +118,7 @@ lazy val commonSettings = inConfig(IntegrationTest)(Defaults.testTasks) ++ Seq(
   )),
   s3credentials := new EnvironmentVariableCredentialsProvider() | new InstanceProfileCredentialsProvider(),
 
+  testListeners := Seq(),
   parallelExecution in Test := true,
   testForkedParallel in Test := true,
   testOptions in Test := Seq(formattingTestArg(target.value), Tests.Argument("-l", "mesosphere.marathon.IntegrationTest")),
@@ -175,7 +176,7 @@ lazy val packagingSettings = Seq(
     "echo \"deb http://repos.mesosphere.com/debian jessie-testing main\" | tee -a /etc/apt/sources.list.d/mesosphere.list && \\" +
     "echo \"deb http://repos.mesosphere.com/debian jessie main\" | tee -a /etc/apt/sources.list.d/mesosphere.list && \\" +
     "apt-get update && \\" +
-    "apt-get install --no-install-recommends -y --force-yes mesos=1.0.0-2.0.89.debian81 && \\" +
+    s"apt-get install --no-install-recommends -y --force-yes mesos=${Dependency.V.MesosDebian} && \\" +
     "apt-get clean")
   )
 )

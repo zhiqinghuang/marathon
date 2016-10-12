@@ -446,13 +446,14 @@ trait MarathonTest extends Suite with StrictLogging with ScalaFutures with Befor
   }
 }
 
+/**
+  * Base trait that starts a local marathon but doesn't have mesos/zookeeper yet
+  */
 trait LocalMarathonTest
     extends ExitDisabledTest
     with MarathonTest
     with BeforeAndAfterAll
-    with ZookeeperServerTest
-    with MesosTest
-    with ScalaFutures {
+    with ScalaFutures { this: MesosTest with ZookeeperServerTest
 
   val marathonArgs = Map.empty[String, String]
 
@@ -477,8 +478,19 @@ trait LocalMarathonTest
   }
 }
 
+/**
+  * trait that has marathon, zk, and a local mesos ready to go
+  */
 trait EmbeddedMarathonTest extends Suite with StrictLogging with ZookeeperServerTest with MesosLocalTest with LocalMarathonTest
+
+/**
+  * trait that has marathon, zk, and a mesos cluster ready to go
+  */
 trait EmbeddedMarathonMesosClusterTest extends Suite with StrictLogging with ZookeeperServerTest with MesosClusterTest with LocalMarathonTest
+
+/**
+  * trait that has a marathon cluster, zk, and mesos ready to go
+  */
 trait MarathonClusterTest extends Suite with StrictLogging with ZookeeperServerTest with MesosLocalTest with LocalMarathonTest {
   val numAdditionalMarathons = 2
   lazy val additionalMarathons = 0.until(numAdditionalMarathons).map { _ =>

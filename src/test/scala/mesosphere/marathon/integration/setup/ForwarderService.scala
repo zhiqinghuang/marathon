@@ -24,6 +24,9 @@ import scala.concurrent.{ Await, Promise }
 import scala.sys.process.{ Process, ProcessLogger }
 import scala.concurrent.duration._
 
+/**
+  * Helper that starts/stops the forwarder classes as java processes specifically for the integration test
+  */
 class ForwarderService {
   private val children = Lock(ArrayBuffer.empty[Process])
   private val uuids = Lock(ArrayBuffer.empty[String])

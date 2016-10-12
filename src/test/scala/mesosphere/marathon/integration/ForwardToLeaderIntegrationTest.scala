@@ -21,7 +21,6 @@ import scala.concurrent.duration.Duration
 class ForwardToLeaderIntegrationTest extends IntegrationFunTest with BeforeAndAfter with BeforeAndAfterAll {
   implicit var actorSystem: ActorSystem = _
   val forwarder = new ForwarderService
-  import forwarder._
 
   before {
     actorSystem = ActorSystem()
@@ -38,7 +37,7 @@ class ForwardToLeaderIntegrationTest extends IntegrationFunTest with BeforeAndAf
   }
 
   test("direct ping") {
-    val helloPort = startHelloApp()
+    val helloPort = forwarder.startHelloApp()
     val appFacade = new AppMockFacade()
     val result = appFacade.ping("localhost", port = helloPort)
     assert(result.originalResponse.status.intValue == 200)
@@ -51,8 +50,8 @@ class ForwardToLeaderIntegrationTest extends IntegrationFunTest with BeforeAndAf
   }
 
   test("forwarding ping") {
-    val helloPort = startHelloApp()
-    val forwardPort = startForwarder(helloPort)
+    val helloPort = forwarder.startHelloApp()
+    val forwardPort = forwarder.startForwarder(helloPort)
 
     val appFacade = new AppMockFacade()
     val result = appFacade.ping("localhost", port = forwardPort)
@@ -69,7 +68,7 @@ class ForwardToLeaderIntegrationTest extends IntegrationFunTest with BeforeAndAf
   }
 
   test("direct HTTPS ping") {
-    val helloPort = startHelloApp("--https_port", Seq(
+    val helloPort = forwarder.startHelloApp("--https_port", Seq(
       "--disable_http",
       "--ssl_keystore_path", SSLContextTestUtil.selfSignedKeyStorePath,
       "--ssl_keystore_password", SSLContextTestUtil.keyStorePassword,
@@ -86,13 +85,13 @@ class ForwardToLeaderIntegrationTest extends IntegrationFunTest with BeforeAndAf
   }
 
   test("forwarding HTTPS ping with a self-signed cert") {
-    val helloPort = startHelloApp("--https_port", Seq(
+    val helloPort = forwarder.startHelloApp("--https_port", Seq(
       "--disable_http",
       "--ssl_keystore_path", SSLContextTestUtil.selfSignedKeyStorePath,
       "--ssl_keystore_password", SSLContextTestUtil.keyStorePassword,
       "--https_address", "localhost"))
 
-    val forwardPort = startForwarder(helloPort, "--https_port", args = Seq(
+    val forwardPort = forwarder.startForwarder(helloPort, "--https_port", args = Seq(
       "--disable_http",
       "--ssl_keystore_path", SSLContextTestUtil.selfSignedKeyStorePath,
       "--ssl_keystore_password", SSLContextTestUtil.keyStorePassword,
@@ -109,13 +108,13 @@ class ForwardToLeaderIntegrationTest extends IntegrationFunTest with BeforeAndAf
   }
 
   test("forwarding HTTPS ping with a ca signed cert") {
-    val helloPort = startHelloApp("--https_port", Seq(
+    val helloPort = forwarder.startHelloApp("--https_port", Seq(
       "--disable_http",
       "--ssl_keystore_path", SSLContextTestUtil.caKeyStorePath,
       "--ssl_keystore_password", SSLContextTestUtil.keyStorePassword,
       "--https_address", "localhost"))
 
-    val forwardPort = startForwarder(
+    val forwardPort = forwarder.startForwarder(
       helloPort,
       "--https_port",
       trustStorePath = Some(SSLContextTestUtil.caTrustStorePath),
@@ -136,22 +135,22 @@ class ForwardToLeaderIntegrationTest extends IntegrationFunTest with BeforeAndAf
   }
 
   test("direct 404") {
-    val helloPort = startHelloApp()
+    val helloPort = forwarder.startHelloApp()
     val appFacade = new AppMockFacade()
     val result = appFacade.custom("/notfound")("localhost", port = helloPort)
     assert(result.originalResponse.status.intValue == 404)
   }
 
   test("forwarding 404") {
-    val helloPort = startHelloApp()
-    val forwardPort = startForwarder(helloPort)
+    val helloPort = forwarder.startHelloApp()
+    val forwardPort = forwarder.startForwarder(helloPort)
     val appFacade = new AppMockFacade()
     val result = appFacade.custom("/notfound")("localhost", port = forwardPort)
     assert(result.originalResponse.status.intValue == 404)
   }
 
   test("direct internal server error") {
-    val helloPort = startHelloApp()
+    val helloPort = forwarder.startHelloApp()
     val appFacade = new AppMockFacade()
     val result = appFacade.custom("/hello/crash")("localhost", port = helloPort)
     assert(result.originalResponse.status.intValue == 500)
@@ -159,8 +158,8 @@ class ForwardToLeaderIntegrationTest extends IntegrationFunTest with BeforeAndAf
   }
 
   test("forwarding internal server error") {
-    val helloPort = startHelloApp()
-    val forwardPort = startForwarder(helloPort)
+    val helloPort = forwarder.startHelloApp()
+    val forwardPort = forwarder.startForwarder(helloPort)
     val appFacade = new AppMockFacade()
     val result = appFacade.custom("/hello/crash")("localhost", port = forwardPort)
     assert(result.originalResponse.status.intValue == 500)
@@ -168,15 +167,15 @@ class ForwardToLeaderIntegrationTest extends IntegrationFunTest with BeforeAndAf
   }
 
   test("forwarding connection failed") {
-    val forwardPort = startForwarder(PortAllocator.ephemeralPort())
+    val forwardPort = forwarder.startForwarder(PortAllocator.ephemeralPort())
     val appFacade = new AppMockFacade()
     val result = appFacade.ping("localhost", port = forwardPort)
     assert(result.originalResponse.status.intValue == HttpStatus.SC_BAD_GATEWAY)
   }
 
   test("forwarding loop") {
-    val forwardPort1 = startForwarder(PortAllocator.ephemeralPort())
-    val forwardPort2 = startForwarder(PortAllocator.ephemeralPort())
+    val forwardPort1 = forwarder.startForwarder(PortAllocator.ephemeralPort())
+    val forwardPort2 = forwarder.startForwarder(PortAllocator.ephemeralPort())
 
     val appFacade = new AppMockFacade()
     val result = appFacade.ping("localhost", port = forwardPort1)
