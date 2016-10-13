@@ -214,7 +214,8 @@ object TestTaskBuilder {
         taskId = instance.map(i => Task.Id.forInstanceId(i.instanceId, None)).getOrElse(Task.Id.forRunSpec(appId)),
         Instance.AgentInfo(host = "host.some", agentId = None, attributes = Seq.empty),
         reservation = reservation,
-        status = Task.Status(Timestamp.now(), taskStatus = InstanceStatus.Reserved))
+        status = Task.Status(Timestamp.now(), taskStatus = InstanceStatus.Reserved),
+        runSpecVersion = Timestamp.now())
 
     def newReservation: Task.Reservation = Task.Reservation(Seq.empty, taskReservationStateNew)
 
@@ -222,7 +223,7 @@ object TestTaskBuilder {
 
     def taskLaunched: Task.Launched = {
       val now = Timestamp.now()
-      Task.Launched(now, status = Task.Status(stagedAt = now, taskStatus = InstanceStatus.Running), hostPorts = Seq.empty)
+      Task.Launched(status = Task.Status(stagedAt = now, taskStatus = InstanceStatus.Running), hostPorts = Seq.empty)
     }
 
     def residentReservedTask(appId: PathId, taskReservationState: Task.Reservation.State, localVolumeIds: Task.LocalVolumeId*) =
