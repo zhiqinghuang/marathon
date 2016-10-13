@@ -20,6 +20,8 @@ trait ExitDisabledTest extends Suite with BeforeAndAfterAll {
   private var previousManager = Option.empty[SecurityManager]
 
   override def beforeAll(): Unit = {
+    // intentionally initialize...
+    ExitDisabledTest.exitsCalled(_.size)
     val newManager = new ExitDisabledSecurityManager()
     securityManager = Some(newManager)
     previousManager = Option(System.getSecurityManager)
@@ -40,6 +42,7 @@ trait ExitDisabledTest extends Suite with BeforeAndAfterAll {
         ExitDisabledTest.exitsCalled(e => e.remove(e.indexOf(desiredCode)))
         true
       } else {
+        ExitDisabledTest.exitsCalled(codes => println(s"All codes: $codes"))
         throw new Exception("Did not find desired exit code.")
       }
     }.recover {
@@ -53,7 +56,7 @@ object ExitDisabledTest {
 
   private class ExitDisabledSecurityManager() extends SecurityManager {
     override def checkExit(i: Int): Unit = {
-      exitsCalled(_ :+ i)
+      exitsCalled(_ += i)
       throw new IllegalStateException(s"Attempted to call exit with code: $i")
     }
 
