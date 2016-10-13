@@ -225,11 +225,8 @@ object Task {
     *
     * @param hostPorts sequence of ports in the Mesos Agent allocated to the task
     */
-  case class Launched(
-      // TODO: remove - use task.status instead (DCOS-10332)
-      status: Status,
-      hostPorts: Seq[Int]) {
-  }
+  // TODO: hostPorts should ultimately move to Task.Status (DCOS-10332)
+  case class Launched(hostPorts: Seq[Int])
 
   /**
     * Contains information about the status of a launched task including timestamps for important
@@ -301,7 +298,8 @@ object Task {
 
     override def reservationWithVolumes: Option[Reservation] = None
 
-    override def launched: Option[Launched] = Some(Task.Launched(status, hostPorts))
+    // TODO: it doesn't really make sense to provide the hostPorts in this wrapper, does it? (DCOS-10332)
+    override def launched: Option[Launched] = Some(Task.Launched(hostPorts))
 
     private[this] def hasStartedRunning: Boolean = status.startedAt.isDefined
 
@@ -483,7 +481,7 @@ object Task {
 
     override def reservationWithVolumes: Option[Reservation] = Some(reservation)
 
-    override def launched: Option[Launched] = Some(Task.Launched(status, hostPorts))
+    override def launched: Option[Launched] = Some(Task.Launched(hostPorts))
 
     private[this] def hasStartedRunning: Boolean = status.startedAt.isDefined
 
