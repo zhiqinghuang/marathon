@@ -10,8 +10,10 @@ import mesosphere.marathon.MarathonSchedulerActor.ScaleRunSpec
 import mesosphere.marathon.core.election.{ ElectionService, LocalLeadershipEvent }
 import mesosphere.marathon.core.event.{ AppTerminatedEvent, DeploymentFailed, DeploymentSuccess }
 import mesosphere.marathon.core.health.HealthCheckManager
+import mesosphere.marathon.core.instance.Instance.AgentInfo
 import mesosphere.marathon.core.instance.{ Instance, InstanceStatus }
 import mesosphere.marathon.core.launchqueue.LaunchQueue
+import mesosphere.marathon.core.task.Task
 import mesosphere.marathon.core.task.termination.{ KillReason, KillService }
 import mesosphere.marathon.core.task.tracker.InstanceTracker
 import mesosphere.marathon.state._
@@ -19,7 +21,8 @@ import mesosphere.marathon.storage.repository._
 import mesosphere.marathon.stream.{ Sink, _ }
 import mesosphere.marathon.upgrade.DeploymentManager._
 import mesosphere.marathon.upgrade.{ DeploymentManager, DeploymentPlan }
-import org.apache.mesos.Protos.Status
+import org.apache.mesos
+import org.apache.mesos.Protos.{ Status, TaskState }
 import org.apache.mesos.SchedulerDriver
 import org.slf4j.LoggerFactory
 
@@ -474,7 +477,7 @@ class SchedulerActions(
     appRepository.ids().concat(podRepository.ids()).runWith(Sink.set).flatMap { runSpecIds =>
       instanceTracker.instancesBySpec().map { instances =>
         val knownTaskStatuses = runSpecIds.flatMap { runSpecId =>
-          instances.specInstances(runSpecId).flatMap(_.tasks.filter(!_.isTerminal)).flatMap(_.mesosStatus)
+          TaskStatusCollector.collectTaskStatusFor(instances.specInstances(runSpecId).to[Seq])
         }
 
         (instances.allSpecIdsWithInstances -- runSpecIds).foreach { unknownId =>
@@ -584,4 +587,36 @@ private[this] object SchedulerActions {
     InstanceStatus.Staging -> 1,
     InstanceStatus.Starting -> 2,
     InstanceStatus.Running -> 3)
+}
+
+/**
+  * Provides means to collect Mesos TaskStatus information for reconciliation.
+  */
+object TaskStatusCollector {
+  def collectTaskStatusFor(instances: Seq[Instance]): Seq[mesos.Protos.TaskStatus] = {
+    instances.flatMap { instance =>
+      instance.tasksMap.valuesIterator.filter(!_.isTerminal).map { task =>
+        task.status.mesosStatus.getOrElse(initialMesosStatusFor(task, instance.agentInfo))
+      }
+    }(collection.breakOut)
+  }
+
+  /**
+    * If a task was started but Marathon never received a status update for it, it will not have a
+    * Mesos TaskStatus attached. In order to reconcile the state of this task, we need to create a
+    * TaskStatus and fill it with the required information.
+    */
+  private[this] def initialMesosStatusFor(task: Task, agentInfo: AgentInfo): mesos.Protos.TaskStatus = {
+    val taskStatusBuilder = mesos.Protos.TaskStatus.newBuilder
+      // in fact we haven't received a status update for these yet, we just pretend it's staging
+      .setState(TaskState.TASK_STAGING)
+      .setTaskId(task.taskId.mesosTaskId)
+
+    agentInfo.agentId.foreach { agentId =>
+      taskStatusBuilder.setSlaveId(mesos.Protos.SlaveID.newBuilder().setValue(agentId))
+    }
+
+    taskStatusBuilder.build()
+  }
+
 }

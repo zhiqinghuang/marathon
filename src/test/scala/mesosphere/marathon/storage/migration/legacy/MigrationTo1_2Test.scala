@@ -78,7 +78,7 @@ class MigrationTo1_2Test extends MarathonSpec with GivenWhenThen with Matchers w
       task =>
         task.getMarathonTaskStatus should not be null
         val serializedTask = TaskSerializer.fromProto(task)
-        val expectedStatus = MarathonTaskStatus(serializedTask.mesosStatus.getOrElse(fail("Task has no mesos task status")))
+        val expectedStatus = MarathonTaskStatus(serializedTask.status.mesosStatus.getOrElse(fail("Task has no mesos task status")))
         val currentStatus = MarathonTaskStatusSerializer.fromProto(task.getMarathonTaskStatus)
 
         currentStatus should be equals expectedStatus
