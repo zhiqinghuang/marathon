@@ -3,13 +3,15 @@ package mesosphere.marathon.core.election.impl
 import akka.event.EventStream
 import mesosphere.AkkaUnitTest
 import mesosphere.marathon.MarathonConf
-import mesosphere.marathon.core.base.{ RichRuntime, ShutdownHooks }
+import mesosphere.marathon.core.base.{RichRuntime, ShutdownHooks}
 import mesosphere.marathon.metrics.Metrics
-import mesosphere.marathon.test.{ ExitDisabledTest, Mockito }
+import mesosphere.marathon.test.{ExitDisabledTest, Mockito}
+import org.junit.Ignore
 import org.rogach.scallop.ScallopOption
 
 import scala.concurrent.duration._
 
+@Ignore // Doesn't do what its supposed to yet: DCOS-9790
 class CuratorElectionServiceTest extends AkkaUnitTest with Mockito with ExitDisabledTest {
 
   def scallopOption[A](a: Option[A]): ScallopOption[A] = {
