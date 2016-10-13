@@ -23,8 +23,8 @@ class TaskLostIntegrationTest extends AkkaIntegrationFunTest with EmbeddedMarath
 
   before {
     cleanUp()
-    mesosCluster.agents.tail.head.stop()
-    mesosCluster.masters.tail.head.stop()
+    mesosCluster.agents(1).stop()
+    mesosCluster.masters(1).stop()
     mesosCluster.masters.head.start()
     mesosCluster.agents.head.start()
   }
@@ -45,7 +45,7 @@ class TaskLostIntegrationTest extends AkkaIntegrationFunTest with EmbeddedMarath
     lost.state should be("TASK_LOST")
 
     When("We do a Mesos Master failover and start the slave again")
-    mesosCluster.masters.tail.head.start()
+    mesosCluster.masters(1).start()
     mesosCluster.masters.head.stop()
     mesosCluster.agents.head.start()
 
@@ -62,7 +62,7 @@ class TaskLostIntegrationTest extends AkkaIntegrationFunTest with EmbeddedMarath
 
     When("We stop the slave, the task is declared lost")
     mesosCluster.agents.head.stop()
-    mesosCluster.agents.tail.head.start()
+    mesosCluster.agents(1).start()
     waitForEventMatching("Task is declared lost") { matchEvent("TASK_LOST", task) }
 
     And("A replacement task is started")
@@ -73,7 +73,7 @@ class TaskLostIntegrationTest extends AkkaIntegrationFunTest with EmbeddedMarath
     val replacement = tasks.find(_.state == "TASK_RUNNING").get
 
     When("We do a Mesos Master failover and start the slave again")
-    mesosCluster.masters.tail.head.start()
+    mesosCluster.masters(1).start()
     mesosCluster.masters.head.stop()
     mesosCluster.agents.head.start()
 
@@ -97,7 +97,7 @@ class TaskLostIntegrationTest extends AkkaIntegrationFunTest with EmbeddedMarath
 
     When("We stop the slave, the task is declared lost")
     mesosCluster.agents.head.stop()
-    mesosCluster.agents.tail.head.start()
+    mesosCluster.agents(1).start()
     waitForEventMatching("Task is declared lost") { matchEvent("TASK_LOST", task) }
 
     Then("The task is killed due to GC timeout and a replacement is started")

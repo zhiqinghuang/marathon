@@ -3,8 +3,9 @@ package mesosphere.marathon.test
 import java.security.Permission
 
 import akka.actor.{ ActorSystem, Scheduler }
+import mesosphere.marathon.test.ExitDisabledTest.ExitDisabledSecurityManager
 import mesosphere.marathon.util.{ Lock, Retry }
-import org.scalatest.Suite
+import org.scalatest.{ BeforeAndAfterAll, Suite }
 
 import scala.collection.mutable
 import scala.concurrent.Future
@@ -14,7 +15,23 @@ import scala.util.control.NonFatal
 /**
   * Mixin that will disable System.exit while the suite is running.
   */
-trait ExitDisabledTest extends Suite {
+trait ExitDisabledTest extends Suite with BeforeAndAfterAll {
+  private var securityManager = Option.empty[SecurityManager]
+  private var previousManager = Option.empty[SecurityManager]
+
+  override def beforeAll(): Unit = {
+    val newManager = new ExitDisabledSecurityManager()
+    securityManager = Some(newManager)
+    previousManager = Option(System.getSecurityManager)
+    System.setSecurityManager(newManager)
+    // intentionally last so that we disable exit as soon as possible
+    super.beforeAll()
+  }
+
+  override def afterAll(): Unit = {
+    System.setSecurityManager(previousManager.orNull)
+    super.afterAll()
+  }
 
   def exitCalled(desiredCode: Int)(implicit system: ActorSystem, scheduler: Scheduler): Future[Boolean] = {
     implicit val ctx = system.dispatcher
@@ -33,7 +50,6 @@ trait ExitDisabledTest extends Suite {
 
 object ExitDisabledTest {
   private val exitsCalled = Lock(mutable.ArrayBuffer.empty[Int])
-  System.setSecurityManager(new ExitDisabledSecurityManager)
 
   private class ExitDisabledSecurityManager() extends SecurityManager {
     override def checkExit(i: Int): Unit = {

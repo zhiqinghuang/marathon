@@ -14,8 +14,8 @@ import mesosphere.marathon.metrics.{ MetricsReporterModule, MetricsReporterServi
 import mesosphere.marathon.storage.StorageModule
 import org.slf4j.LoggerFactory
 import org.slf4j.bridge.SLF4JBridgeHandler
+import mesosphere.marathon.stream._
 
-import scala.collection.JavaConverters._
 import scala.concurrent.ExecutionContext
 
 class MarathonApp(args: Seq[String]) extends AutoCloseable with StrictLogging {
@@ -51,24 +51,23 @@ class MarathonApp(args: Seq[String]) extends AutoCloseable with StrictLogging {
 
     log.info(s"Starting Marathon ${BuildInfo.version}/${BuildInfo.buildref} with ${args.mkString(" ")}")
 
-    val injector = Guice.createInjector(modules.asJava)
+    val injector = Guice.createInjector(modules)
     val services = Seq(
       classOf[HttpService],
       classOf[MarathonSchedulerService],
       classOf[MetricsReporterService],
       classOf[StorageModule]).map(injector.getInstance(_))
-    val serviceManager = new ServiceManager(services.asJava)
-    this.serviceManager = Some(serviceManager)
+    serviceManager = Some(new ServiceManager(services))
 
     sys.addShutdownHook(shutdownAndWait())
 
-    serviceManager.startAsync()
+    serviceManager.foreach(_.startAsync())
 
     try {
-      serviceManager.awaitHealthy()
+      serviceManager.foreach(_.awaitHealthy())
     } catch {
       case e: Exception =>
-        log.error(s"Failed to start all services. Services by state: ${serviceManager.servicesByState()}", e)
+        log.error(s"Failed to start all services. Services by state: ${serviceManager.map(_.servicesByState()).getOrElse("[]")}", e)
         shutdownAndWait()
         throw e
     }

@@ -50,7 +50,12 @@ class ZookeeperServer(
     override def run(): Unit = {
       while (!closing) {
         zk.runFromConfig(config)
-        Try(semaphore.acquire())
+        try {
+          semaphore.acquire()
+        } catch {
+          case _: InterruptedException =>
+            closing = true
+        }
       }
     }
   }, s"Zookeeper-$port")

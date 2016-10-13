@@ -18,6 +18,7 @@ import scala.concurrent.duration.Duration
 /**
   * Tests forwarding requests.
   */
+@IntegrationTest
 class ForwardToLeaderIntegrationTest extends IntegrationFunTest with BeforeAndAfter with BeforeAndAfterAll {
   implicit var actorSystem: ActorSystem = _
   val forwarder = new ForwarderService

@@ -147,12 +147,12 @@ lazy val commonSettings = inConfig(IntegrationTest)(Defaults.testTasks) ++ Seq(
 lazy val asmSettings = Seq(
   assemblyMergeStrategy in assembly <<= (assemblyMergeStrategy in assembly) { old =>
   {
-    case "application.conf"                                             => MergeStrategy.concat
-    case "META-INF/jersey-module-version"                               => MergeStrategy.first
-    case "org/apache/hadoop/yarn/util/package-info.class"               => MergeStrategy.first
-    case "org/apache/hadoop/yarn/factories/package-info.class"          => MergeStrategy.first
-    case "org/apache/hadoop/yarn/factory/providers/package-info.class"  => MergeStrategy.first
-    case x                                                              => old(x)
+    case "application.conf" => MergeStrategy.concat
+    case "META-INF/jersey-module-version" => MergeStrategy.first
+    case "org/apache/hadoop/yarn/util/package-info.class" => MergeStrategy.first
+    case "org/apache/hadoop/yarn/factories/package-info.class" => MergeStrategy.first
+    case "org/apache/hadoop/yarn/factory/providers/package-info.class" => MergeStrategy.first
+    case x => old(x)
   }
   },
   assemblyExcludedJars in assembly <<= (fullClasspath in assembly) map { cp =>
