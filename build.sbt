@@ -8,7 +8,7 @@ import sbtrelease.ReleaseStateTransformations._
 import scalariform.formatter.preferences.{AlignArguments, AlignParameters, AlignSingleLineCaseStatements, CompactControlReadability, DanglingCloseParenthesis, DoubleIndentClassDeclaration, FormatXml, FormattingPreferences, IndentSpaces, IndentWithTabs, MultilineScaladocCommentsStartOnFirstLine, PlaceScaladocAsterisksBeneathSecondAsterisk, Preserve, PreserveSpaceBeforeArguments, SpaceBeforeColon, SpaceInsideBrackets, SpaceInsideParentheses, SpacesAroundMultiImports, SpacesWithinPatternBinders}
 
 lazy val IntegrationTest = config("integration") extend Test
-def formattingTestArg(target: File) = Tests.Argument("-u", (target / "test-reports").getAbsolutePath, "-eDFG")
+def formattingTestArg(target: File) = Tests.Argument("-u", target.getAbsolutePath, "-eDFG")
 
 // 0.1.15 has tons of false positives in async/await
 resolvers += Resolver.sonatypeRepo("snapshots")
@@ -121,11 +121,11 @@ lazy val commonSettings = inConfig(IntegrationTest)(Defaults.testTasks) ++ Seq(
   testListeners := Seq(),
   parallelExecution in Test := true,
   testForkedParallel in Test := true,
-  testOptions in Test := Seq(formattingTestArg(target.value), Tests.Argument("-l", "mesosphere.marathon.IntegrationTest")),
+  testOptions in Test := Seq(formattingTestArg(target.value / "test-reports"), Tests.Argument("-l", "mesosphere.marathon.IntegrationTest")),
   fork in Test := true,
 
   fork in IntegrationTest := true,
-  testOptions in IntegrationTest := Seq(formattingTestArg(target.value), Tests.Argument("-n", "mesosphere.marathon.IntegrationTest")),
+  testOptions in IntegrationTest := Seq(formattingTestArg(target.value / "test-reports" / "integration"), Tests.Argument("-n", "mesosphere.marathon.IntegrationTest")),
   parallelExecution in IntegrationTest := true,
   testForkedParallel in IntegrationTest := true,
   // The next two options control the maximum amount of parallelism allowed for IntegrationTests. It slows the suite
