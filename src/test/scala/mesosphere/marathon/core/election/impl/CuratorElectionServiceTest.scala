@@ -3,15 +3,13 @@ package mesosphere.marathon.core.election.impl
 import akka.event.EventStream
 import mesosphere.AkkaUnitTest
 import mesosphere.marathon.MarathonConf
-import mesosphere.marathon.core.base.{ RichRuntime, ShutdownHooks }
+import mesosphere.marathon.core.base.{RichRuntime, ShutdownHooks}
 import mesosphere.marathon.metrics.Metrics
-import mesosphere.marathon.test.{ ExitDisabledTest, Mockito }
+import mesosphere.marathon.test.{ExitDisabledTest, Mockito}
 import org.rogach.scallop.ScallopOption
-import org.scalatest.Ignore
 
 import scala.concurrent.duration._
 
-@Ignore // Doesn't do what its supposed to yet: DCOS-9790
 class CuratorElectionServiceTest extends AkkaUnitTest with Mockito with ExitDisabledTest {
 
   def scallopOption[A](a: Option[A]): ScallopOption[A] = {
@@ -34,8 +32,10 @@ class CuratorElectionServiceTest extends AkkaUnitTest with Mockito with ExitDisa
 
     "given an unresolvable hostname" should {
 
-      conf.zkHosts returns ("unresolvable:8080")
-      conf.zooKeeperSessionTimeout returns (scallopOption(Some(10 * 1000L)))
+      conf.zkHosts returns "unresolvable:8080"
+      conf.zooKeeperSessionTimeout returns scallopOption(Some(10))
+      conf.zooKeeperTimeout returns scallopOption(Some(10))
+      conf.zkPath returns "/marathon"
 
       "shut Marathon down on a NonFatal" in {
         service.offerLeadershipImpl()
