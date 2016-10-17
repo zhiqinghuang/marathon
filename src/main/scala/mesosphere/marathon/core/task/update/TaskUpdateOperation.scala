@@ -1,6 +1,6 @@
 package mesosphere.marathon.core.task.update
 
-import mesosphere.marathon.core.instance.InstanceStatus
+import mesosphere.marathon.core.condition.Condition
 import mesosphere.marathon.core.task.Task
 import mesosphere.marathon.state.Timestamp
 import org.apache.mesos
@@ -12,7 +12,7 @@ trait TaskUpdateOperation extends Product with Serializable
 
 object TaskUpdateOperation {
   case class MesosUpdate(
-    status: InstanceStatus,
+    condition: Condition,
     taskStatus: mesos.Protos.TaskStatus,
     now: Timestamp) extends TaskUpdateOperation
 

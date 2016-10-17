@@ -3,8 +3,9 @@ package mesosphere.marathon.core.task.tracker.impl
 import akka.actor.{ ActorRef, Status }
 import akka.util.Timeout
 import mesosphere.marathon.core.base.Clock
+import mesosphere.marathon.core.condition.Condition
 import mesosphere.marathon.core.event.MarathonEvent
-import mesosphere.marathon.core.instance.{ Instance, InstanceStatus }
+import mesosphere.marathon.core.instance.Instance
 import mesosphere.marathon.core.instance.update.{ InstanceChangedEventsGenerator, InstanceUpdateEffect, InstanceUpdateOperation }
 import mesosphere.marathon.core.task.tracker.impl.InstanceOpProcessorImpl.InstanceUpdateOpResolver
 import mesosphere.marathon.core.task.tracker.{ InstanceTracker, InstanceTrackerConfig }
@@ -55,7 +56,7 @@ private[tracker] object InstanceOpProcessorImpl {
             new IllegalStateException(s"$instanceId of app [${instanceId.runSpecId}] already exists"))
 
         case None =>
-          val events = eventsGenerator.events(updatedInstance.state.status, updatedInstance, task = None, clock.now())
+          val events = eventsGenerator.events(updatedInstance.state.condition, updatedInstance, task = None, clock.now())
           InstanceUpdateEffect.Update(updatedInstance, oldState = None, events)
       }
     }
@@ -75,7 +76,7 @@ private[tracker] object InstanceOpProcessorImpl {
     private[this] def expungeInstance(id: Instance.Id)(implicit ec: ExecutionContext): Future[InstanceUpdateEffect] = {
       directInstanceTracker.instance(id).map {
         case Some(existingInstance: Instance) =>
-          val events = eventsGenerator.events(InstanceStatus.Killed, existingInstance, task = None, clock.now())
+          val events = eventsGenerator.events(Condition.Killed, existingInstance, task = None, clock.now())
           InstanceUpdateEffect.Expunge(existingInstance, events)
 
         case None =>

@@ -6,7 +6,7 @@ import akka.testkit.{ TestActorRef, TestProbe }
 import com.codahale.metrics.MetricRegistry
 import mesosphere.marathon.core.instance.TestInstanceBuilder
 import mesosphere.marathon.core.instance.update.{ InstanceChangedEventsGenerator, InstanceUpdateEffect, InstanceUpdateOperation }
-import mesosphere.marathon.core.task.MarathonTaskStatus
+import mesosphere.marathon.core.task.TaskCondition
 import mesosphere.marathon.core.task.bus.TaskStatusUpdateTestHelper
 import mesosphere.marathon.core.task.tracker.{ InstanceTracker, InstanceTrackerUpdateStepProcessor }
 import mesosphere.marathon.metrics.Metrics
@@ -109,7 +109,7 @@ class InstanceTrackerActorTest
     val operation = helper.operation.asInstanceOf[InstanceUpdateOperation.MesosUpdate]
     val stagedUpdate = helper.effect
     val stagedAck = InstanceTrackerActor.Ack(probe.ref, stagedUpdate)
-    val events = f.eventsGenerator.events(helper.wrapped.status, helper.wrapped.instance, Some(stagedInstance.tasks.head), operation.now)
+    val events = f.eventsGenerator.events(helper.wrapped.condition, helper.wrapped.instance, Some(stagedInstance.tasks.head), operation.now)
 
     probe.send(f.taskTrackerActor, InstanceTrackerActor.StateChanged(stagedAck))
     probe.expectMsg(InstanceUpdateEffect.Expunge(helper.wrapped.instance, events))
@@ -150,7 +150,7 @@ class InstanceTrackerActorTest
     val mesosStatus = stagedTaskNowRunning.tasks.head.mesosStatus.get
     val update = TaskStatusUpdateTestHelper.taskUpdateFor(
       stagedInstance,
-      MarathonTaskStatus(mesosStatus), mesosStatus).effect
+      TaskCondition(mesosStatus), mesosStatus).effect
     val ack = InstanceTrackerActor.Ack(probe.ref, update)
 
     probe.send(f.taskTrackerActor, InstanceTrackerActor.StateChanged(ack))

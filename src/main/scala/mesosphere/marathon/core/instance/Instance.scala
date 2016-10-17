@@ -4,6 +4,7 @@ package core.instance
 import java.util.Base64
 
 import com.fasterxml.uuid.{ EthernetAddress, Generators }
+import mesosphere.marathon.core.condition.Condition
 import mesosphere.marathon.core.instance.Instance.InstanceState
 import mesosphere.marathon.core.instance.update.{ InstanceChangedEventsGenerator, InstanceUpdateEffect, InstanceUpdateOperation }
 import mesosphere.marathon.core.task.Task
@@ -26,12 +27,11 @@ case class Instance(
     instanceId: Instance.Id,
     agentInfo: Instance.AgentInfo,
     state: InstanceState,
-    tasksMap: Map[Task.Id, Task]) extends MarathonState[Protos.Json, Instance] with Placed {
+    tasksMap: Map[Task.Id, Task],
+    runSpecVersion: Timestamp) extends MarathonState[Protos.Json, Instance] with Placed {
 
   // TODO(PODS): check consumers of this def and see if they can use the map instead
   val tasks = tasksMap.values
-  // TODO(PODS): make this a case class ctor argument and move out of Instance.Status
-  val runSpecVersion: Timestamp = state.version
   val runSpecId: PathId = instanceId.runSpecId
   val isLaunched: Boolean = tasksMap.valuesIterator.forall(task => task.launched.isDefined)
 
@@ -83,13 +83,13 @@ case class Instance(
             case TaskUpdateEffect.Update(updatedTask) =>
               val updated = this.copy(
                 state = state.copy(
-                  status = InstanceStatus.Staging,
-                  since = timestamp,
-                  version = newRunSpecVersion
+                  condition = Condition.Staging,
+                  since = timestamp
                 ),
-                tasksMap = tasksMap.updated(task.taskId, updatedTask)
+                tasksMap = tasksMap.updated(task.taskId, updatedTask),
+                runSpecVersion = newRunSpecVersion
               )
-              val events = eventsGenerator.events(updated.state.status, updated, task = None, timestamp)
+              val events = eventsGenerator.events(updated.state.condition, updated, task = None, timestamp)
               InstanceUpdateEffect.Update(updated, oldState = Some(this), events)
 
             case _ =>
@@ -102,7 +102,7 @@ case class Instance(
       case InstanceUpdateOperation.ReservationTimeout(_) =>
         if (this.isReserved) {
           // TODO(PODS): don#t use Timestamp.now()
-          val events = eventsGenerator.events(state.status, this, task = None, Timestamp.now())
+          val events = eventsGenerator.events(state.condition, this, task = None, Timestamp.now())
           InstanceUpdateEffect.Expunge(this, events)
         } else {
           InstanceUpdateEffect.Failure("ReservationTimeout can only be applied to a reserved instance")
@@ -139,7 +139,7 @@ case class Instance(
 
   private[instance] def updatedInstance(updatedTask: Task, now: Timestamp): Instance = {
     val updatedTasks = tasksMap.updated(updatedTask.taskId, updatedTask)
-    copy(tasksMap = updatedTasks, state = Instance.newInstanceState(Some(state), updatedTasks, now, runSpecVersion))
+    copy(tasksMap = updatedTasks, state = Instance.newInstanceState(Some(state), updatedTasks, now))
   }
 }
 
@@ -147,24 +147,28 @@ case class Instance(
 object Instance {
   // required for legacy store, remove when legacy storage is removed.
   def apply(): Instance = {
-    new Instance(Instance.Id(""), AgentInfo("", None, Nil),
-      InstanceState(InstanceStatus.Unknown, Timestamp.zero, Timestamp.zero, healthy = None), Map.empty[Task.Id, Task])
+    new Instance(
+      Instance.Id(""),
+      AgentInfo("", None, Nil),
+      InstanceState(Condition.Unknown, Timestamp.zero, healthy = None),
+      Map.empty[Task.Id, Task],
+      Timestamp.zero)
   }
 
   private val eventsGenerator = InstanceChangedEventsGenerator
   private val log: Logger = LoggerFactory.getLogger(classOf[Instance])
 
   /**
-    * An instance can only have this status, if all tasks of the intance have this status.
+    * An instance can only have this status, if all tasks of the instance have this status.
     * The order of the status is important.
     * If 2 tasks are Running and 2 tasks already Finished, the final status is Running.
     */
-  private val AllInstanceStatuses: Seq[InstanceStatus] = Seq(
-    InstanceStatus.Created,
-    InstanceStatus.Reserved,
-    InstanceStatus.Running,
-    InstanceStatus.Finished,
-    InstanceStatus.Killed
+  private val AllInstanceConditions: Seq[Condition] = Seq(
+    Condition.Created,
+    Condition.Reserved,
+    Condition.Running,
+    Condition.Finished,
+    Condition.Killed
   )
 
   /**
@@ -172,16 +176,16 @@ object Instance {
     * The order of the status is important.
     * If one task is Error and one task is Staging, the instance status is Error.
     */
-  private val DistinctInstanceStatuses: Seq[InstanceStatus] = Seq(
-    InstanceStatus.Error,
-    InstanceStatus.Failed,
-    InstanceStatus.Gone,
-    InstanceStatus.Dropped,
-    InstanceStatus.Unreachable,
-    InstanceStatus.Killing,
-    InstanceStatus.Starting,
-    InstanceStatus.Staging,
-    InstanceStatus.Unknown
+  private val DistinctInstanceConditions: Seq[Condition] = Seq(
+    Condition.Error,
+    Condition.Failed,
+    Condition.Gone,
+    Condition.Dropped,
+    Condition.Unreachable,
+    Condition.Killing,
+    Condition.Starting,
+    Condition.Staging,
+    Condition.Unknown
   )
 
   def instancesById(tasks: Iterable[Instance]): Map[Instance.Id, Instance] =
@@ -189,53 +193,46 @@ object Instance {
 
   // TODO(PODS-BLOCKER) ju remove apply
   def apply(task: Task): Instance = {
-    val version = task.version.getOrElse {
-      // TODO(PODS): fix this
-      log.error("A default Timestamp.zero breaks things!")
-      Timestamp.zero
-    }
-
     val since = task.status.startedAt.getOrElse(task.status.stagedAt)
     val tasksMap = Map(task.taskId -> task)
-    val state = newInstanceState(None, tasksMap, since, version)
+    val state = newInstanceState(None, tasksMap, since)
 
-    new Instance(task.taskId.instanceId, task.agentInfo, state, tasksMap)
+    new Instance(task.taskId.instanceId, task.agentInfo, state, tasksMap, task.runSpecVersion)
   }
-  case class InstanceState(status: InstanceStatus, since: Timestamp, version: Timestamp, healthy: Option[Boolean])
+  case class InstanceState(condition: Condition, since: Timestamp, healthy: Option[Boolean])
 
   @SuppressWarnings(Array("TraversableHead"))
   private[instance] def newInstanceState(
     maybeOldState: Option[InstanceState],
     newTaskMap: Map[Task.Id, Task],
-    timestamp: Timestamp,
-    runSpecVersion: Timestamp): InstanceState = {
+    timestamp: Timestamp): InstanceState = {
 
     val tasks = newTaskMap.values
 
-    //compute the new instance status
-    val stateMap = tasks.groupBy(_.status.taskStatus)
-    val status = if (stateMap.size == 1) {
-      // all tasks have the same status -> this is the instance status
-      stateMap.keys.head
+    // compute the new instance state
+    val conditionMap = tasks.groupBy(_.status.condition)
+    val condition = if (conditionMap.size == 1) {
+      // all tasks have the same condition -> this is the instance condition
+      conditionMap.keys.head
     } else {
       // since we don't have a distinct state, we remove states where all tasks have to agree on
       // and search for a distinct state
-      val distinctStates = Instance.AllInstanceStatuses.foldLeft(stateMap) { (ds, status) => ds - status }
-      Instance.DistinctInstanceStatuses.find(distinctStates.contains).getOrElse {
-        // if no distinct state is found all tasks are in different AllInstanceStatuses
+      val distinctCondition = Instance.AllInstanceConditions.foldLeft(conditionMap) { (ds, status) => ds - status }
+      Instance.DistinctInstanceConditions.find(distinctCondition.contains).getOrElse {
+        // if no distinct condition is found all tasks are in different AllInstanceConditions
         // we pick the first matching one
-        Instance.AllInstanceStatuses.find(stateMap.contains).getOrElse {
+        Instance.AllInstanceConditions.find(conditionMap.contains).getOrElse {
           // if we come here, something is wrong, since we covered all existing states
-          Instance.log.error(s"Could not compute new instance state for state map: $stateMap")
-          InstanceStatus.Unknown
+          Instance.log.error(s"Could not compute new instance condition for condition map: $conditionMap")
+          Condition.Unknown
         }
       }
     }
 
     val healthy = computeHealth(tasks.toVector)
     maybeOldState match {
-      case Some(state) if state.status == status && state.healthy == healthy => state
-      case _ => InstanceState(status, timestamp, runSpecVersion, healthy)
+      case Some(state) if state.condition == condition && state.healthy == healthy => state
+      case _ => InstanceState(condition, timestamp, healthy)
     }
   }
 
@@ -246,7 +243,7 @@ object Instance {
     task.isRunning && task.status.mesosStatus.fold(false)(m => m.hasHealthy && m.getHealthy)
   }
   private[this] def isPending(task: Task): Boolean = {
-    task.status.taskStatus != InstanceStatus.Running && task.status.taskStatus != InstanceStatus.Finished
+    task.status.condition != Condition.Running && task.status.condition != Condition.Finished
   }
 
   /**
@@ -335,21 +332,21 @@ object Instance {
     )
   }
 
-  implicit class InstanceStatusComparison(val instance: Instance) extends AnyVal {
-    def isReserved: Boolean = instance.state.status == InstanceStatus.Reserved
-    def isCreated: Boolean = instance.state.status == InstanceStatus.Created
-    def isError: Boolean = instance.state.status == InstanceStatus.Error
-    def isFailed: Boolean = instance.state.status == InstanceStatus.Failed
-    def isFinished: Boolean = instance.state.status == InstanceStatus.Finished
-    def isKilled: Boolean = instance.state.status == InstanceStatus.Killed
-    def isKilling: Boolean = instance.state.status == InstanceStatus.Killing
-    def isRunning: Boolean = instance.state.status == InstanceStatus.Running
-    def isStaging: Boolean = instance.state.status == InstanceStatus.Staging
-    def isStarting: Boolean = instance.state.status == InstanceStatus.Starting
-    def isUnreachable: Boolean = instance.state.status == InstanceStatus.Unreachable
-    def isGone: Boolean = instance.state.status == InstanceStatus.Gone
-    def isUnknown: Boolean = instance.state.status == InstanceStatus.Unknown
-    def isDropped: Boolean = instance.state.status == InstanceStatus.Dropped
+  implicit class InstanceConditionComparison(val instance: Instance) extends AnyVal {
+    def isReserved: Boolean = instance.state.condition == Condition.Reserved
+    def isCreated: Boolean = instance.state.condition == Condition.Created
+    def isError: Boolean = instance.state.condition == Condition.Error
+    def isFailed: Boolean = instance.state.condition == Condition.Failed
+    def isFinished: Boolean = instance.state.condition == Condition.Finished
+    def isKilled: Boolean = instance.state.condition == Condition.Killed
+    def isKilling: Boolean = instance.state.condition == Condition.Killing
+    def isRunning: Boolean = instance.state.condition == Condition.Running
+    def isStaging: Boolean = instance.state.condition == Condition.Staging
+    def isStarting: Boolean = instance.state.condition == Condition.Starting
+    def isUnreachable: Boolean = instance.state.condition == Condition.Unreachable
+    def isGone: Boolean = instance.state.condition == Condition.Gone
+    def isUnknown: Boolean = instance.state.condition == Condition.Unknown
+    def isDropped: Boolean = instance.state.condition == Condition.Dropped
   }
 
   /**
@@ -372,7 +369,7 @@ object Instance {
   }
   implicit val agentFormat: Format[AgentInfo] = Json.format[AgentInfo]
   implicit val idFormat: Format[Instance.Id] = Json.format[Instance.Id]
-  implicit val instanceStatusFormat: Format[InstanceStatus] = Json.format[InstanceStatus]
+  implicit val instanceConditionFormat: Format[Condition] = Json.format[Condition]
   implicit val instanceStateFormat: Format[InstanceState] = Json.format[InstanceState]
   implicit val instanceJsonFormat: Format[Instance] = Json.format[Instance]
   implicit lazy val tasksMapFormat: Format[Map[Task.Id, Task]] = Format(

@@ -14,6 +14,21 @@ import scala.concurrent.duration._
 object IntegrationTag extends Tag("mesosphere.marathon.IntegrationTest")
 
 /**
+  * Trait for enabling or disabling test cases based on environment variables.
+  */
+trait RunInEnvironment extends FunSuite {
+  def envVar: String
+
+  override protected def test(testName: String, testTags: Tag*)(testFun: => Any)(implicit pos: Position): Unit = {
+    if (sys.env.getOrElse(envVar, "true") == "true") {
+      super.test(testName, testTags: _*)(testFun)
+    } else {
+      super.ignore(testName, testTags: _*)(testFun)
+    }
+  }
+}
+
+/**
   * Health check helper to define health behaviour of launched applications
   */
 class IntegrationHealthCheck(val appId: PathId, val versionId: String, val port: Int, var state: Boolean, var lastUpdate: DateTime = DateTime.now) {

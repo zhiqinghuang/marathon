@@ -4,8 +4,9 @@ package core.task
 import java.util.Base64
 
 import com.fasterxml.uuid.{ EthernetAddress, Generators }
-import mesosphere.marathon.core.instance.InstanceStatus.Terminal
-import mesosphere.marathon.core.instance.{ Instance, InstanceStatus }
+import mesosphere.marathon.core.condition.Condition
+import mesosphere.marathon.core.condition.Condition.Terminal
+import mesosphere.marathon.core.instance.Instance
 import mesosphere.marathon.core.pod.MesosContainer
 import mesosphere.marathon.core.task.Task.Reservation.Timeout.Reason.{ RelaunchEscalationTimeout, ReservationTimeout }
 import mesosphere.marathon.core.task.update.{ TaskUpdateEffect, TaskUpdateOperation }
@@ -65,6 +66,7 @@ sealed trait Task {
   def agentInfo: Instance.AgentInfo
   def reservationWithVolumes: Option[Task.Reservation]
   def launched: Option[Task.Launched]
+  def runSpecVersion: Timestamp
 
   /** apply the given operation to a task */
   def update(update: TaskUpdateOperation): TaskUpdateEffect
@@ -103,12 +105,6 @@ sealed trait Task {
       case _ =>
         Some(agentInfo.host)
     }
-
-  /**
-    * convenience function added so that components can fold over this instead of matching
-    * the type of task. Every Task should eventually have a version, then this can be removed.
-    */
-  def version: Option[Timestamp]
 }
 
 object Task {
@@ -230,7 +226,6 @@ object Task {
     * @param hostPorts sequence of ports in the Mesos Agent allocated to the task
     */
   case class Launched(
-      runSpecVersion: Timestamp,
       status: Status,
       hostPorts: Seq[Int]) {
 
@@ -252,7 +247,7 @@ object Task {
       stagedAt: Timestamp,
       startedAt: Option[Timestamp] = None,
       mesosStatus: Option[MesosProtos.TaskStatus] = None,
-      taskStatus: InstanceStatus) {
+      condition: Condition) {
 
     /**
       * @return the health status reported by mesos for this task
@@ -308,7 +303,7 @@ object Task {
 
     override def reservationWithVolumes: Option[Reservation] = None
 
-    override def launched: Option[Launched] = Some(Task.Launched(runSpecVersion, status, hostPorts))
+    override def launched: Option[Launched] = Some(Task.Launched(status, hostPorts))
 
     private[this] def hasStartedRunning: Boolean = status.startedAt.isDefined
 
@@ -323,10 +318,10 @@ object Task {
         log.warn(s"received $op for terminal $taskId, ignoring")
         TaskUpdateEffect.Noop
 
-      case TaskUpdateOperation.MesosUpdate(InstanceStatus.Running, mesosStatus, now) if !hasStartedRunning =>
+      case TaskUpdateOperation.MesosUpdate(Condition.Running, mesosStatus, now) if !hasStartedRunning =>
         val updatedTask = copy(status = status.copy(
           mesosStatus = Some(mesosStatus),
-          taskStatus = InstanceStatus.Running,
+          condition = Condition.Running,
           startedAt = Some(now)
         ))
         TaskUpdateEffect.Update(newState = updatedTask)
@@ -335,15 +330,15 @@ object Task {
       case TaskUpdateOperation.MesosUpdate(newStatus: Terminal, mesosStatus, _) =>
         val updated = copy(status = status.copy(
           mesosStatus = Some(mesosStatus),
-          taskStatus = newStatus))
+          condition = newStatus))
         TaskUpdateEffect.Update(updated)
 
       case TaskUpdateOperation.MesosUpdate(newStatus, mesosStatus, _) =>
-        // TODO(PODS): strange to use InstanceStatus here
+        // TODO(PODS): strange to use Condition here
         updatedHealthOrState(status.mesosStatus, mesosStatus).map { newTaskStatus =>
           val updatedTask = copy(status = status.copy(
             mesosStatus = Some(newTaskStatus),
-            taskStatus = newStatus
+            condition = newStatus
           ))
           // TODO(PODS): The instance needs to handle a terminal task via an Update here
           // Or should we use Expunge in case of a terminal update for resident tasks?
@@ -353,8 +348,6 @@ object Task {
           TaskUpdateEffect.Noop
         }
     }
-
-    override def version: Option[Timestamp] = Some(runSpecVersion)
   }
 
   object LaunchedEphemeral {
@@ -458,23 +451,22 @@ object Task {
       taskId: Task.Id,
       agentInfo: Instance.AgentInfo,
       reservation: Reservation,
-      status: Status) extends Task {
+      status: Status,
+      runSpecVersion: Timestamp) extends Task {
 
     override def reservationWithVolumes: Option[Reservation] = Some(reservation)
 
     override def launched: Option[Launched] = None
 
     override def update(op: TaskUpdateOperation): TaskUpdateEffect = op match {
-      case TaskUpdateOperation.LaunchOnReservation(runSpecVersion, taskStatus, hostPorts) =>
+      case TaskUpdateOperation.LaunchOnReservation(newRunSpecVersion, taskStatus, hostPorts) =>
         val updatedTask = LaunchedOnReservation(
-          taskId, agentInfo, runSpecVersion, taskStatus, hostPorts, reservation)
+          taskId, agentInfo, newRunSpecVersion, taskStatus, hostPorts, reservation)
         TaskUpdateEffect.Update(updatedTask)
 
       case update: TaskUpdateOperation.MesosUpdate =>
         TaskUpdateEffect.Failure("Mesos task status updates cannot be applied to reserved tasks")
     }
-
-    override def version: Option[Timestamp] = None // TODO also Reserved tasks have a version
   }
 
   object Reserved {
@@ -493,7 +485,7 @@ object Task {
 
     override def reservationWithVolumes: Option[Reservation] = Some(reservation)
 
-    override def launched: Option[Launched] = Some(Task.Launched(runSpecVersion, status, hostPorts))
+    override def launched: Option[Launched] = Some(Task.Launched(status, hostPorts))
 
     private[this] def hasStartedRunning: Boolean = status.startedAt.isDefined
 
@@ -510,12 +502,12 @@ object Task {
         TaskUpdateEffect.Noop
 
       // case 1: now running
-      case TaskUpdateOperation.MesosUpdate(InstanceStatus.Running, mesosStatus, now) if !hasStartedRunning =>
+      case TaskUpdateOperation.MesosUpdate(Condition.Running, mesosStatus, now) if !hasStartedRunning =>
         val updated = copy(
           status = status.copy(
             startedAt = Some(now),
             mesosStatus = Some(mesosStatus),
-            taskStatus = InstanceStatus.Running))
+            condition = Condition.Running))
         TaskUpdateEffect.Update(updated)
 
       // case 2: terminal
@@ -527,8 +519,9 @@ object Task {
           status = status.copy(
             mesosStatus = Some(mesosStatus),
             // Note the task needs to transition to Reserved, otherwise the instance will not transition to Reserved
-            taskStatus = InstanceStatus.Reserved
-          )
+            condition = Condition.Reserved
+          ),
+          runSpecVersion = runSpecVersion
         )
         TaskUpdateEffect.Update(updatedTask)
 
@@ -537,15 +530,13 @@ object Task {
         updatedHealthOrState(status.mesosStatus, mesosUpdate).map { newTaskStatus =>
           val updatedTask = copy(status = status.copy(
             mesosStatus = Some(newTaskStatus),
-            taskStatus = newStatus))
+            condition = newStatus))
           TaskUpdateEffect.Update(newState = updatedTask)
         } getOrElse {
           log.debug("Ignoring status update for {}. Status did not change.", taskId)
           TaskUpdateEffect.Noop
         }
     }
-
-    override def version: Option[Timestamp] = Some(runSpecVersion)
   }
 
   object LaunchedOnReservation {
@@ -576,21 +567,21 @@ object Task {
   def tasksById(tasks: Iterable[Task]): Map[Task.Id, Task] = tasks.iterator.map(task => task.taskId -> task).toMap
 
   implicit class TaskStatusComparison(val task: Task) extends AnyVal {
-    def isReserved: Boolean = task.status.taskStatus == InstanceStatus.Reserved
-    def isCreated: Boolean = task.status.taskStatus == InstanceStatus.Created
-    def isError: Boolean = task.status.taskStatus == InstanceStatus.Error
-    def isFailed: Boolean = task.status.taskStatus == InstanceStatus.Failed
-    def isFinished: Boolean = task.status.taskStatus == InstanceStatus.Finished
-    def isKilled: Boolean = task.status.taskStatus == InstanceStatus.Killed
-    def isKilling: Boolean = task.status.taskStatus == InstanceStatus.Killing
-    def isRunning: Boolean = task.status.taskStatus == InstanceStatus.Running
-    def isStaging: Boolean = task.status.taskStatus == InstanceStatus.Staging
-    def isStarting: Boolean = task.status.taskStatus == InstanceStatus.Starting
-    def isUnreachable: Boolean = task.status.taskStatus == InstanceStatus.Unreachable
-    def isGone: Boolean = task.status.taskStatus == InstanceStatus.Gone
-    def isUnknown: Boolean = task.status.taskStatus == InstanceStatus.Unknown
-    def isDropped: Boolean = task.status.taskStatus == InstanceStatus.Dropped
-    def isTerminal: Boolean = task.status.taskStatus.isTerminal
+    def isReserved: Boolean = task.status.condition == Condition.Reserved
+    def isCreated: Boolean = task.status.condition == Condition.Created
+    def isError: Boolean = task.status.condition == Condition.Error
+    def isFailed: Boolean = task.status.condition == Condition.Failed
+    def isFinished: Boolean = task.status.condition == Condition.Finished
+    def isKilled: Boolean = task.status.condition == Condition.Killed
+    def isKilling: Boolean = task.status.condition == Condition.Killing
+    def isRunning: Boolean = task.status.condition == Condition.Running
+    def isStaging: Boolean = task.status.condition == Condition.Staging
+    def isStarting: Boolean = task.status.condition == Condition.Starting
+    def isUnreachable: Boolean = task.status.condition == Condition.Unreachable
+    def isGone: Boolean = task.status.condition == Condition.Gone
+    def isUnknown: Boolean = task.status.condition == Condition.Unknown
+    def isDropped: Boolean = task.status.condition == Condition.Dropped
+    def isTerminal: Boolean = task.status.condition.isTerminal
   }
 
   implicit object TaskFormat extends Format[Task] {

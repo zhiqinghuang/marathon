@@ -4,10 +4,10 @@ package storage.migration.legacy
 import akka.stream.scaladsl.Sink
 import com.codahale.metrics.MetricRegistry
 import mesosphere.marathon.Protos.MarathonTask
-import mesosphere.marathon.core.instance.InstanceStatus
-import mesosphere.marathon.core.task.bus.TaskStatusUpdateTestHelper
-import mesosphere.marathon.core.task.tracker.impl.{ MarathonTaskStatusSerializer, TaskSerializer }
-import mesosphere.marathon.core.task.{ MarathonTaskStatus, Task }
+import mesosphere.marathon.core.condition.Condition
+import mesosphere.marathon.core.task.bus.MesosTaskStatusTestHelper
+import mesosphere.marathon.core.task.tracker.impl.{ TaskConditionSerializer, TaskSerializer }
+import mesosphere.marathon.core.task.{ Task, TaskCondition }
 import mesosphere.marathon.metrics.Metrics
 import mesosphere.marathon.state.MarathonTaskState
 import mesosphere.marathon.storage.LegacyInMemConfig
@@ -54,42 +54,42 @@ class MigrationTo1_2Test extends MarathonSpec with GivenWhenThen with Matchers w
     nodeNames should contain theSameElementsAs Seq("deployment:fcabfa75-7756-4bc8-94b3-c9d5b2abd38c", "foo:bar")
   }
 
-  test("should migrate tasks and add calculated MarathonTaskStatus to stored tasks") {
-    Given("some tasks without MarathonTaskStatus")
+  test("should migrate tasks and add calculated Condition to stored tasks") {
+    Given("some tasks without Condition")
     val f = new Fixture
 
     f.store("/running1", makeMarathonTaskState("/running1", mesos.Protos.TaskState.TASK_RUNNING))
     f.store("/running2", makeMarathonTaskState("/running2", mesos.Protos.TaskState.TASK_RUNNING))
-    f.store("/running3", makeMarathonTaskState("/running3", mesos.Protos.TaskState.TASK_RUNNING, marathonTaskStatus = Some(InstanceStatus.Running)))
+    f.store("/running3", makeMarathonTaskState("/running3", mesos.Protos.TaskState.TASK_RUNNING, maybeCondition = Some(Condition.Running)))
     f.store("/unreachable1", makeMarathonTaskState("/unreachable1", mesos.Protos.TaskState.TASK_LOST, Some(TaskStatus.Reason.REASON_RECONCILIATION)))
     f.store("/gone1", makeMarathonTaskState("/gone1", mesos.Protos.TaskState.TASK_LOST, Some(TaskStatus.Reason.REASON_CONTAINER_LAUNCH_FAILED)))
 
     When("migrating")
     f.migration.migrate().futureValue
 
-    Then("the tasks should all have a MarathonTaskStatus according their initial mesos task status")
+    Then("the tasks should all have a Condition according their initial mesos task status")
     val storedTasks = f.taskRepo.all().map(TaskSerializer.toProto).runWith(Sink.seq)
 
     storedTasks.futureValue.foreach {
       task =>
-        task.getMarathonTaskStatus should not be null
+        task.getCondition should not be null
         val serializedTask = TaskSerializer.fromProto(task)
-        val expectedStatus = MarathonTaskStatus(serializedTask.mesosStatus.getOrElse(fail("Task has no mesos task status")))
-        val currentStatus = MarathonTaskStatusSerializer.fromProto(task.getMarathonTaskStatus)
+        val expectedStatus = TaskCondition(serializedTask.mesosStatus.getOrElse(fail("Task has no mesos task status")))
+        val currentCondition = TaskConditionSerializer.fromProto(task.getCondition)
 
-        currentStatus should be equals expectedStatus
+        currentCondition should be equals expectedStatus
     }
   }
 
-  private def makeMarathonTaskState(taskId: String, taskState: mesos.Protos.TaskState, maybeReason: Option[TaskStatus.Reason] = None, marathonTaskStatus: Option[InstanceStatus] = None): MarathonTaskState = {
-    val mesosStatus = TaskStatusUpdateTestHelper.makeMesosTaskStatus(Task.Id.forRunSpec(taskId.toPath), taskState, maybeReason = maybeReason)
+  private def makeMarathonTaskState(taskId: String, taskState: mesos.Protos.TaskState, maybeReason: Option[TaskStatus.Reason] = None, maybeCondition: Option[Condition] = None): MarathonTaskState = {
+    val mesosStatus = MesosTaskStatusTestHelper.mesosStatus(state = taskState, taskId = Task.Id.forRunSpec(taskId.toPath), maybeReason = maybeReason)
     val builder = MarathonTask.newBuilder()
       .setId(taskId)
       .setStatus(mesosStatus)
       .setHost("abc")
       .setStagedAt(1)
-    if (marathonTaskStatus.isDefined) {
-      builder.setMarathonTaskStatus(MarathonTaskStatusSerializer.toProto(marathonTaskStatus.get))
+    if (maybeCondition.isDefined) {
+      builder.setCondition(TaskConditionSerializer.toProto(maybeCondition.get))
     }
     MarathonTaskState(builder.build())
   }

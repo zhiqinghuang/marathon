@@ -11,9 +11,10 @@ import com.codahale.metrics.annotation.Timed
 import mesosphere.marathon.api.v2.json.Formats._
 import mesosphere.marathon.api.{ EndpointsHelper, MarathonMediaType, TaskKiller, _ }
 import mesosphere.marathon.core.appinfo.EnrichedTask
+import mesosphere.marathon.core.condition.Condition
 import mesosphere.marathon.core.group.GroupManager
 import mesosphere.marathon.core.health.HealthCheckManager
-import mesosphere.marathon.core.instance.{ Instance, InstanceStatus }
+import mesosphere.marathon.core.instance.Instance
 import mesosphere.marathon.core.task.Task
 import mesosphere.marathon.core.task.tracker.InstanceTracker
 import mesosphere.marathon.plugin.auth.{ Authenticator, Authorizer, UpdateRunSpec, ViewRunSpec }
@@ -45,7 +46,7 @@ class TasksResource @Inject() (
     @QueryParam("status[]") statuses: util.List[String],
     @Context req: HttpServletRequest): Response = authenticated(req) { implicit identity =>
     Option(status).map(statuses.add)
-    val statusSet: Set[InstanceStatus] = statuses.flatMap(toTaskState)(collection.breakOut)
+    val conditionSet: Set[Condition] = statuses.flatMap(toTaskState)(collection.breakOut)
 
     val taskList = instanceTracker.instancesBySpecSync
 
@@ -68,7 +69,7 @@ class TasksResource @Inject() (
     val enrichedTasks = tasks.flatMap {
       case (appId, task) =>
         val app = appIdsToApps(appId)
-        if (isAuthorized(ViewRunSpec, app) && (statusSet.isEmpty || statusSet(task.status.taskStatus))) {
+        if (isAuthorized(ViewRunSpec, app) && (conditionSet.isEmpty || conditionSet(task.status.condition))) {
           Some(EnrichedTask(
             appId,
             task,
@@ -141,9 +142,9 @@ class TasksResource @Inject() (
     else killTasks(tasksByAppId)
   }
 
-  private def toTaskState(state: String): Option[InstanceStatus] = state.toLowerCase match {
-    case "running" => Some(InstanceStatus.Running)
-    case "staging" => Some(InstanceStatus.Staging)
+  private def toTaskState(state: String): Option[Condition] = state.toLowerCase match {
+    case "running" => Some(Condition.Running)
+    case "staging" => Some(Condition.Staging)
     case _ => None
   }
 }

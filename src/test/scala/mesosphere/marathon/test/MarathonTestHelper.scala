@@ -11,9 +11,10 @@ import mesosphere.marathon.Protos.Constraint.Operator
 import mesosphere.marathon.api.JsonTestHelper
 import mesosphere.marathon.api.serialization.LabelsSerializer
 import mesosphere.marathon.core.base.Clock
+import mesosphere.marathon.core.condition.Condition
 import mesosphere.marathon.core.instance.Instance.InstanceState
 import mesosphere.marathon.core.instance.update.InstanceChangeHandler
-import mesosphere.marathon.core.instance.{ Instance, InstanceStatus }
+import mesosphere.marathon.core.instance.Instance
 import mesosphere.marathon.core.launcher.impl.{ ReservationLabels, TaskLabels }
 import mesosphere.marathon.core.leadership.LeadershipModule
 import mesosphere.marathon.core.task.Task
@@ -333,8 +334,9 @@ object MarathonTestHelper {
   def emptyInstance(): Instance = Instance(
     instanceId = Task.Id.forRunSpec(PathId("/test")).instanceId,
     agentInfo = Instance.AgentInfo("", None, Nil),
-    state = InstanceState(InstanceStatus.Created, since = clock.now(), version = clock.now(), healthy = None),
-    tasksMap = Map.empty[Task.Id, Task]
+    state = InstanceState(Condition.Created, since = clock.now(), healthy = None),
+    tasksMap = Map.empty[Task.Id, Task],
+    runSpecVersion = clock.now()
   )
 
   def createTaskTracker(

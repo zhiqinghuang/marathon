@@ -5,7 +5,7 @@ import akka.event.EventStream
 import mesosphere.marathon.SchedulerActions
 import mesosphere.marathon.core.event.{ InstanceHealthChanged, InstanceChanged }
 import mesosphere.marathon.core.instance.Instance
-import mesosphere.marathon.core.instance.InstanceStatus.Terminal
+import mesosphere.marathon.core.condition.Condition.Terminal
 import mesosphere.marathon.core.launchqueue.LaunchQueue
 import mesosphere.marathon.core.task.tracker.InstanceTracker
 import org.apache.mesos.SchedulerDriver
@@ -56,7 +56,7 @@ trait StartingBehavior extends ReadinessBehavior { this: Actor with ActorLogging
       context.system.scheduler.scheduleOnce(5.seconds, self, Sync)
   }
 
-  override def instanceStatusChanged(instanceId: Instance.Id): Unit = {
+  override def instanceConditionChanged(instanceId: Instance.Id): Unit = {
     log.info(s"New instance $instanceId changed during app ${runSpec.id} scaling, " +
       s"${readyInstances.size} ready ${healthyInstances.size} healthy need $nrToStart")
     checkFinished()

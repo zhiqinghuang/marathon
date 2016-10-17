@@ -5,7 +5,7 @@ import akka.event.EventStream
 import mesosphere.marathon.TaskUpgradeCanceledException
 import mesosphere.marathon.core.event._
 import mesosphere.marathon.core.instance.Instance
-import mesosphere.marathon.core.instance.InstanceStatus.Terminal
+import mesosphere.marathon.core.condition.Condition.Terminal
 import mesosphere.marathon.core.launchqueue.LaunchQueue
 import mesosphere.marathon.core.readiness.ReadinessCheckExecutor
 import mesosphere.marathon.core.task.termination.{ KillReason, KillService }
@@ -83,7 +83,7 @@ class TaskReplaceActor(
     case change: InstanceChanged => //ignore
   }
 
-  override def instanceStatusChanged(instanceId: Instance.Id): Unit = {
+  override def instanceConditionChanged(instanceId: Instance.Id): Unit = {
     if (healthyInstances(instanceId) && readyInstances(instanceId)) killNextOldInstance(Some(instanceId))
     checkFinished()
   }

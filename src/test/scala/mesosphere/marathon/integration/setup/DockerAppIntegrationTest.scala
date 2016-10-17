@@ -13,63 +13,38 @@ class DockerAppIntegrationTest extends AkkaIntegrationFunTest with EmbeddedMarat
   //clean up state before running the test case
   before(cleanUp())
 
-  // FIXME (gkleiman): Docker tests don't work under Docker Machine yet. So they can be disabled through an env variable.
-  if (sys.env.getOrElse("RUN_DOCKER_INTEGRATION_TESTS", "true") == "true") {
-    test("deploy a simple Docker app") {
-      Given("a new Docker app")
-      val app = AppDefinition(
-        id = testBasePath / "dockerapp",
-        cmd = Some("sleep 600"),
-        container = Some(Container.Docker(image = "busybox")),
-        resources = Resources(cpus = 0.2, mem = 16.0),
-        instances = 1
-      )
+  test("deploy a simple Docker app") {
+    Given("a new Docker app")
+    val app = AppDefinition(
+      id = testBasePath / "dockerapp",
+      cmd = Some("sleep 600"),
+      container = Some(Container.Docker(image = "busybox")),
+      resources = Resources(cpus = 0.2, mem = 16.0),
+      instances = 1
+    )
 
-      When("The app is deployed")
-      val result = marathon.createAppV2(app)
+    When("The app is deployed")
+    val result = marathon.createAppV2(app)
 
-      Then("The app is created")
-      result.code should be(201) // Created
-      extractDeploymentIds(result) should have size 1
-      waitForEvent("deployment_success")
-      waitForTasks(app.id, 1) // The app has really started
-    }
+    Then("The app is created")
+    result.code should be(201) // Created
+    extractDeploymentIds(result) should have size 1
+    waitForEvent("deployment_success")
+    waitForTasks(app.id, 1) // The app has really started
+  }
 
-    // TODO(nfnt): Enable this test when integration tests aren't run in a Docker container.
-    // The Mesos containerizer needs access to cgroups, which is hard to provide in a container.
-    ignore("deploy a simple Docker app using the Mesos containerizer") {
-      Given("a new Docker app")
-      val app = AppDefinition(
-        id = testBasePath / "mesosdockerapp",
-        cmd = Some("sleep 600"),
-        container = Some(Container.MesosDocker(image = "busybox")),
-        resources = Resources(cpus = 0.2, mem = 16.0),
-        instances = 1
-      )
+  test("create a simple docker app using http health checks with HOST networking") {
+    Given("a new app")
+    val app = dockerAppProxy(testBasePath / "docker-http-app", "v1", instances = 1, withHealth = true)
+    val check = appProxyCheck(app.id, "v1", true)
 
-      When("The app is deployed")
-      val result = marathon.createAppV2(app)
+    When("The app is deployed")
+    val result = marathon.createAppV2(app)
 
-      Then("The app is created")
-      result.code should be(201) // Created
-      extractDeploymentIds(result) should have size 1
-      waitForEvent("deployment_success")
-      waitForTasks(app.id, 1) // The app has really started
-    }
-
-    test("create a simple docker app using http health checks with HOST networking") {
-      Given("a new app")
-      val app = dockerAppProxy(testBasePath / "docker-http-app", "v1", instances = 1, withHealth = true)
-      val check = appProxyCheck(app.id, "v1", true)
-
-      When("The app is deployed")
-      val result = marathon.createAppV2(app)
-
-      Then("The app is created")
-      result.code should be(201) //Created
-      extractDeploymentIds(result) should have size 1
-      waitForEvent("deployment_success")
-      check.pingSince(5.seconds) should be(true) //make sure, the app has really started
-    }
+    Then("The app is created")
+    result.code should be(201) //Created
+    extractDeploymentIds(result) should have size 1
+    waitForEvent("deployment_success")
+    check.pingSince(5.seconds) should be(true) //make sure, the app has really started
   }
 }

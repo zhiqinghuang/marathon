@@ -2,7 +2,8 @@ package mesosphere.marathon.core.launcher.impl
 
 import mesosphere.marathon.test.MarathonSpec
 import mesosphere.marathon.core.base.{ Clock, ConstantClock }
-import mesosphere.marathon.core.instance.{ Instance, InstanceStatus }
+import mesosphere.marathon.core.condition.Condition
+import mesosphere.marathon.core.instance.Instance
 import mesosphere.marathon.core.instance.Instance.AgentInfo
 import mesosphere.marathon.core.pod.{ MesosContainer, PodDefinition }
 import mesosphere.marathon.core.task.Task
@@ -123,7 +124,7 @@ class InstanceOpFactoryImplTest extends MarathonSpec with Matchers {
 
     instance.tasks.foreach { task =>
       task.status.stagedAt should be(clock.now())
-      task.status.taskStatus should be(InstanceStatus.Created)
+      task.status.condition should be(Condition.Created)
     }
   }
 }

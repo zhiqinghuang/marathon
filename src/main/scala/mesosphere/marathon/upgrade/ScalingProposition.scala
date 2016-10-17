@@ -1,6 +1,7 @@
 package mesosphere.marathon.upgrade
 
-import mesosphere.marathon.core.instance.{ Instance, InstanceStatus }
+import mesosphere.marathon.core.condition.Condition
+import mesosphere.marathon.core.instance.Instance
 import mesosphere.marathon.state.Timestamp
 
 case class ScalingProposition(tasksToKill: Option[Seq[Instance]], tasksToStart: Option[Int])
@@ -32,10 +33,10 @@ object ScalingProposition {
 
     // TODO: this should evaluate a task's health as well
     // If we need to kill tasks, the order should be LOST - UNREACHABLE - UNHEALTHY - STAGING - (EVERYTHING ELSE)
-    def sortByStatusAndDate(a: Instance, b: Instance): Boolean = {
+    def sortByConditionAndDate(a: Instance, b: Instance): Boolean = {
       import SortHelper._
-      val weightA = weight(a.state.status)
-      val weightB = weight(b.state.status)
+      val weightA = weight(a.state.condition)
+      val weightB = weight(b.state.condition)
 
       if (weightA < weightB) true
       else if (weightB < weightA) false
@@ -45,7 +46,7 @@ object ScalingProposition {
     val ordered =
       sentencedAndRunningMap.values.toSeq ++
         killToMeetConstraints.toSeq ++
-        rest.values.toSeq.sortWith(sortByStatusAndDate)
+        rest.values.toSeq.sortWith(sortByConditionAndDate)
 
     val candidatesToKill = ordered.take(killCount)
     val numberOfTasksToStart = scaleTo - runningTasks.size + killCount
@@ -60,11 +61,11 @@ object ScalingProposition {
 
 private[this] object SortHelper {
   /** tasks with lower weight should be killed first */
-  val weight: Map[InstanceStatus, Int] = Map[InstanceStatus, Int](
-    InstanceStatus.Unreachable -> 1,
-    InstanceStatus.Staging -> 2,
-    InstanceStatus.Starting -> 3,
-    InstanceStatus.Running -> 4).withDefaultValue(5)
+  val weight: Map[Condition, Int] = Map[Condition, Int](
+    Condition.Unreachable -> 1,
+    Condition.Staging -> 2,
+    Condition.Starting -> 3,
+    Condition.Running -> 4).withDefaultValue(5)
 
   def startedAt(instance: Instance): Timestamp = {
     instance.tasks.map(_.launched.flatMap(_.status.startedAt).getOrElse(Timestamp.zero)).min // TODO PODs discuss

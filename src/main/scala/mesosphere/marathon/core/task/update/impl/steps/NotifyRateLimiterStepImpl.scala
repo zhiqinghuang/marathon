@@ -4,7 +4,7 @@ import java.time.OffsetDateTime
 
 import akka.Done
 import com.google.inject.{ Inject, Provider }
-import mesosphere.marathon.core.instance.InstanceStatus
+import mesosphere.marathon.core.condition.Condition
 import mesosphere.marathon.core.instance.update.{ InstanceChange, InstanceChangeHandler }
 import mesosphere.marathon.core.launchqueue.LaunchQueue
 import mesosphere.marathon.state.PathId
@@ -24,7 +24,7 @@ class NotifyRateLimiterStepImpl @Inject() (
   override def name: String = "notifyRateLimiter"
 
   override def process(update: InstanceChange): Future[Done] = {
-    if (limitWorthy(update.status)) {
+    if (limitWorthy(update.condition)) {
       notifyRateLimiter(update.runSpecId, update.instance.runSpecVersion.toOffsetDateTime)
     } else {
       Future.successful(Done)
@@ -45,8 +45,8 @@ class NotifyRateLimiterStepImpl @Inject() (
 }
 
 private[steps] object NotifyRateLimiterStep {
-  // A set of status that are worth rate limiting the associated runSpec
-  val limitWorthy: Set[InstanceStatus] = Set(
-    InstanceStatus.Dropped, InstanceStatus.Error, InstanceStatus.Failed, InstanceStatus.Gone, InstanceStatus.Finished
+  // A set of conditions that are worth rate limiting the associated runSpec
+  val limitWorthy: Set[Condition] = Set(
+    Condition.Dropped, Condition.Error, Condition.Failed, Condition.Gone, Condition.Finished
   )
 }

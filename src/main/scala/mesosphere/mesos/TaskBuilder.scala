@@ -3,8 +3,9 @@ package mesosphere.mesos
 import com.google.protobuf.TextFormat
 import mesosphere.marathon._
 import mesosphere.marathon.api.serialization.{ ContainerSerializer, PortDefinitionSerializer, PortMappingSerializer }
+import mesosphere.marathon.core.condition.Condition
 import mesosphere.marathon.core.health.MesosHealthCheck
-import mesosphere.marathon.core.instance.{ Instance, InstanceStatus }
+import mesosphere.marathon.core.instance.Instance
 import mesosphere.marathon.core.task.Task
 import mesosphere.marathon.plugin.task.RunSpecTaskProcessor
 import mesosphere.marathon.state._
@@ -296,7 +297,7 @@ class TaskBuilder(
         runSpecVersion = runSpec.version,
         status = Task.Status(
           stagedAt = Timestamp.zero,
-          taskStatus = InstanceStatus.Created
+          condition = Condition.Created
         ),
         hostPorts = hostPorts
       )

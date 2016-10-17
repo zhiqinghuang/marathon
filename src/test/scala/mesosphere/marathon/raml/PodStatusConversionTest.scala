@@ -2,7 +2,8 @@ package mesosphere.marathon
 package raml
 
 import mesosphere.marathon.core.base.ConstantClock
-import mesosphere.marathon.core.instance.{ Instance, InstanceStatus }
+import mesosphere.marathon.core.condition.Condition
+import mesosphere.marathon.core.instance.Instance
 import mesosphere.marathon.core.pod.{ ContainerNetwork, MesosContainer, PodDefinition }
 import mesosphere.marathon.core.task.Task
 import mesosphere.marathon.state.{ PathId, Timestamp }
@@ -407,26 +408,26 @@ object PodStatusConversionTest {
     instance: Instance)
 
   def createdInstance(pod: PodDefinition)(implicit clock: ConstantClock): InstanceFixture =
-    fakeInstance(pod, InstanceStatus.Created, InstanceStatus.Created)
+    fakeInstance(pod, Condition.Created, Condition.Created)
 
   def stagingInstance(pod: PodDefinition)(implicit clock: ConstantClock): InstanceFixture =
-    fakeInstance(pod, InstanceStatus.Staging, InstanceStatus.Staging, Some(Protos.TaskState.TASK_STAGING))
+    fakeInstance(pod, Condition.Staging, Condition.Staging, Some(Protos.TaskState.TASK_STAGING))
 
   def startingInstance(pod: PodDefinition)(implicit clock: ConstantClock): InstanceFixture =
-    fakeInstance(pod, InstanceStatus.Starting, InstanceStatus.Starting, Some(Protos.TaskState.TASK_STARTING),
+    fakeInstance(pod, Condition.Starting, Condition.Starting, Some(Protos.TaskState.TASK_STARTING),
       Some(Map("dcos" -> "1.2.3.4", "bigdog" -> "2.3.4.5")))
 
   def runningInstance(
     pod: PodDefinition,
     maybeHealthy: Option[Boolean] = None)(implicit clock: ConstantClock): InstanceFixture =
 
-    fakeInstance(pod, InstanceStatus.Running, InstanceStatus.Running, Some(Protos.TaskState.TASK_RUNNING),
+    fakeInstance(pod, Condition.Running, Condition.Running, Some(Protos.TaskState.TASK_RUNNING),
       Some(Map("dcos" -> "1.2.3.4", "bigdog" -> "2.3.4.5")), maybeHealthy)
 
   def fakeInstance(
     pod: PodDefinition,
-    instanceStatus: InstanceStatus,
-    taskStatus: InstanceStatus,
+    condition: Condition,
+    taskStatus: Condition,
     maybeTaskState: Option[Protos.TaskState] = None,
     maybeNetworks: Option[Map[String, String]] = None,
     maybeHealthy: Option[Boolean] = None)(implicit clock: ConstantClock): InstanceFixture = {
@@ -462,9 +463,8 @@ object PodStatusConversionTest {
       instanceId = instanceId,
       agentInfo = agentInfo,
       state = Instance.InstanceState(
-        status = instanceStatus,
+        condition = condition,
         since = since,
-        version = pod.version,
         healthy = None),
       tasksMap = Seq[Task](
         Task.LaunchedEphemeral(
@@ -473,13 +473,14 @@ object PodStatusConversionTest {
           since,
           Task.Status(
             stagedAt = since,
-            startedAt = if (taskStatus == InstanceStatus.Created) None else Some(since),
+            startedAt = if (taskStatus == Condition.Created) None else Some(since),
             mesosStatus = mesosStatus,
-            taskStatus = taskStatus
+            condition = taskStatus
           ),
           hostPorts = Seq(1001)
         )
-      ).map(t => t.taskId -> t).toMap)
+      ).map(t => t.taskId -> t).toMap,
+      runSpecVersion = pod.version)
 
     InstanceFixture(since, agentInfo, taskIds, instance)
   } // fakeInstance
@@ -497,7 +498,7 @@ object PodStatusConversionTest {
           .setContainerStatus(Protos.ContainerStatus.newBuilder()
             .addAllNetworkInfos(networks).build())
           .build()),
-        taskStatus = InstanceStatus.Finished
+        condition = Condition.Finished
       ),
       runSpecVersion = Timestamp.zero,
       hostPorts = Seq.empty)

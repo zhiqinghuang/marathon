@@ -7,10 +7,11 @@ import akka.event.{ EventStream, LoggingReceive }
 import akka.pattern.ask
 import akka.stream.Materializer
 import mesosphere.marathon.MarathonSchedulerActor.ScaleRunSpec
+import mesosphere.marathon.core.condition.Condition
 import mesosphere.marathon.core.election.{ ElectionService, LocalLeadershipEvent }
 import mesosphere.marathon.core.event.{ AppTerminatedEvent, DeploymentFailed, DeploymentSuccess }
 import mesosphere.marathon.core.health.HealthCheckManager
-import mesosphere.marathon.core.instance.{ Instance, InstanceStatus }
+import mesosphere.marathon.core.instance.Instance
 import mesosphere.marathon.core.launchqueue.LaunchQueue
 import mesosphere.marathon.core.task.termination.{ KillReason, KillService }
 import mesosphere.marathon.core.task.tracker.InstanceTracker
@@ -541,8 +542,8 @@ class SchedulerActions(
       launchQueue.purge(runSpec.id)
 
       val toKill = instanceTracker.specInstancesSync(runSpec.id).toSeq
-        .filter(t => runningOrStaged.contains(t.state.status))
-        .sortWith(sortByStateAndTime)
+        .filter(t => runningOrStaged.contains(t.state.condition))
+        .sortWith(sortByConditionAndTime)
         .take(launchedCount - targetCount)
 
       log.info("Killing tasks {}", toKill.map(_.instanceId))
@@ -568,20 +569,20 @@ class SchedulerActions(
 }
 
 private[this] object SchedulerActions {
-  def sortByStateAndTime(a: Instance, b: Instance): Boolean = {
+  def sortByConditionAndTime(a: Instance, b: Instance): Boolean = {
     def stagedEarlier: Boolean = {
       val stagedA = a.tasks.map(_.status.stagedAt)
       val stagedB = b.tasks.map(_.status.stagedAt)
       if (stagedA.nonEmpty && stagedB.nonEmpty) stagedA.max.compareTo(stagedB.max) > 0 else false
     }
-    runningOrStaged(b.state.status).compareTo(runningOrStaged(a.state.status)) match {
+    runningOrStaged(b.state.condition).compareTo(runningOrStaged(a.state.condition)) match {
       case 0 => stagedEarlier
       case value: Int => value > 0
     }
   }
 
-  val runningOrStaged: Map[InstanceStatus, Int] = Map(
-    InstanceStatus.Staging -> 1,
-    InstanceStatus.Starting -> 2,
-    InstanceStatus.Running -> 3)
+  val runningOrStaged: Map[Condition, Int] = Map(
+    Condition.Staging -> 1,
+    Condition.Starting -> 2,
+    Condition.Running -> 3)
 }

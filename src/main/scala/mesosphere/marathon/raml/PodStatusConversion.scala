@@ -3,7 +3,8 @@ package raml
 
 import java.time.OffsetDateTime
 
-import mesosphere.marathon.core.instance.{ Instance, InstanceStatus }
+import mesosphere.marathon.core.condition.Condition
+import mesosphere.marathon.core.instance.Instance
 import mesosphere.marathon.core.pod.{ MesosContainer, PodDefinition }
 import mesosphere.marathon.core.task.Task
 import mesosphere.marathon.state.RunSpec
@@ -29,8 +30,8 @@ trait PodStatusConversion {
     val displayName = task.taskId.containerName.getOrElse(task.taskId.mesosTaskId.getValue)
 
     val resources: Option[Resources] = {
-      import InstanceStatus._
-      task.status.taskStatus match {
+      import Condition._
+      task.status.condition match {
         case Staging | Starting | Running | Reserved | Unreachable | Killing =>
           maybeContainerSpec.map(_.resources)
         case _ =>
@@ -41,7 +42,7 @@ trait PodStatusConversion {
     // TODO(jdef) message
     ContainerStatus(
       name = displayName,
-      status = task.status.taskStatus.toMesosStateName,
+      status = task.status.condition.toMesosStateName,
       statusSince = since,
       containerId = task.launchedMesosId.map(_.getValue),
       endpoints = endpointStatus,
@@ -71,7 +72,7 @@ trait PodStatusConversion {
 
     val containerStatus: Seq[ContainerStatus] = instance.tasks.map(t => Raml.toRaml((pod, t)))(collection.breakOut)
     val (derivedStatus: PodInstanceState, message: Option[String]) = podInstanceState(
-      instance.state.status, containerStatus)
+      instance.state.condition, containerStatus)
 
     val networkStatus: Seq[NetworkStatus] = networkStatuses(instance.tasks.toVector)
     val resources: Resources = containerStatus.flatMap(_.resources).foldLeft(PodDefinition.DefaultExecutorResources) { (all, res) =>
@@ -129,8 +130,8 @@ trait PodStatusConversion {
     endpointStatuses: Seq[ContainerEndpointStatus],
     since: OffsetDateTime): Option[StatusCondition] =
 
-    status.taskStatus match {
-      case InstanceStatus.Created | InstanceStatus.Staging | InstanceStatus.Starting | InstanceStatus.Reserved =>
+    status.condition match {
+      case Condition.Created | Condition.Staging | Condition.Starting | Condition.Reserved =>
         // not useful to report health conditions for tasks that have never reached a running state
         None
       case _ =>
@@ -213,17 +214,17 @@ trait PodStatusConversion {
     }.getOrElse(Seq.empty[ContainerEndpointStatus])
 
   def podInstanceState(
-    status: InstanceStatus,
+    condition: Condition,
     containerStatus: Seq[ContainerStatus]): (PodInstanceState, Option[String]) = {
 
-    import InstanceStatus._
+    import Condition._
 
-    status match {
+    condition match {
       case Created | Reserved =>
         PodInstanceState.Pending -> None
       case Staging | Starting =>
         PodInstanceState.Staging -> None
-      case InstanceStatus.Error | Failed | Finished | Killed | Gone | Dropped | Unknown | Killing =>
+      case Condition.Error | Failed | Finished | Killed | Gone | Dropped | Unknown | Killing =>
         PodInstanceState.Terminal -> None
       case Unreachable =>
         PodInstanceState.Degraded -> Some(MSG_INSTANCE_UNREACHABLE)

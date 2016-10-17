@@ -3,12 +3,13 @@ package mesosphere.marathon.core.task.update.impl.steps
 import akka.actor.ActorSystem
 import akka.event.EventStream
 import ch.qos.logback.classic.spi.ILoggingEvent
+import mesosphere.marathon.core.condition.Condition
 import mesosphere.marathon.core.event.{ InstanceHealthChanged, MarathonEvent }
 import mesosphere.marathon.core.instance.Instance.InstanceState
 import mesosphere.marathon.core.instance.update._
-import mesosphere.marathon.core.instance.{ Instance, InstanceStatus, TestInstanceBuilder }
+import mesosphere.marathon.core.instance.{ Instance, TestInstanceBuilder }
 import mesosphere.marathon.core.task.bus.TaskStatusUpdateTestHelper
-import mesosphere.marathon.core.task.{ MarathonTaskStatus, Task }
+import mesosphere.marathon.core.task.{ TaskCondition, Task }
 import mesosphere.marathon.state.{ PathId, Timestamp }
 import mesosphere.marathon.test.{ CaptureEvents, CaptureLogEvents, MarathonTestHelper }
 import org.apache.mesos
@@ -34,23 +35,23 @@ class PostToEventStreamStepImplTest extends FunSuite
     Given("an existing STAGED task")
     val f = new Fixture(system)
     val existingInstance = stagedMarathonInstance
-    val expectedInstanceStatus = InstanceStatus.Running
+    val expectedInstanceCondition = Condition.Running
 
     When("we receive a running status update")
     val status = makeTaskStatus(existingInstance.instanceId, mesos.Protos.TaskState.TASK_RUNNING)
-    val helper = TaskStatusUpdateTestHelper.taskUpdateFor(existingInstance, MarathonTaskStatus(status), status, updateTimestamp).wrapped
+    val helper = TaskStatusUpdateTestHelper.taskUpdateFor(existingInstance, TaskCondition(status), status, updateTimestamp).wrapped
     val (logs, events) = f.captureLogAndEvents {
       f.step.process(helper).futureValue
     }
 
     Then("the appropriate event is posted")
-    val expectedEvents = f.eventsGenerator.events(expectedInstanceStatus, helper.instance, Some(existingInstance.tasks.head), updateTimestamp)
+    val expectedEvents = f.eventsGenerator.events(expectedInstanceCondition, helper.instance, Some(existingInstance.tasks.head), updateTimestamp)
     events should have size 2
     events shouldEqual expectedEvents
 
     And("only sending event info gets logged")
     logs.map(_.toString) should contain (
-      s"[INFO] Publishing events for ${helper.instance.instanceId} of runSpec [$appId]: ${helper.status}"
+      s"[INFO] Publishing events for ${helper.instance.instanceId} of runSpec [$appId]: ${helper.condition}"
     )
   }
 
@@ -132,8 +133,8 @@ class PostToEventStreamStepImplTest extends FunSuite
     Given("an existing task")
     val f = new Fixture(system)
     val taskStatus = makeTaskStatus(instance.instanceId, terminalTaskState)
-    val expectedInstanceStatus = MarathonTaskStatus(taskStatus)
-    val helper = TaskStatusUpdateTestHelper.taskUpdateFor(instance, expectedInstanceStatus, taskStatus, timestamp = updateTimestamp)
+    val expectedTaskCondition = TaskCondition(taskStatus)
+    val helper = TaskStatusUpdateTestHelper.taskUpdateFor(instance, expectedTaskCondition, taskStatus, timestamp = updateTimestamp)
 
     When("we receive a terminal status update")
     val instanceChange = helper.wrapped
@@ -142,13 +143,13 @@ class PostToEventStreamStepImplTest extends FunSuite
     }
 
     Then("the appropriate event is posted")
-    val expectedEvents = f.eventsGenerator.events(expectedInstanceStatus, helper.wrapped.instance, Some(instance.tasks.head), updateTimestamp)
+    val expectedEvents = f.eventsGenerator.events(expectedTaskCondition, helper.wrapped.instance, Some(instance.tasks.head), updateTimestamp)
     events should have size 2
     events shouldEqual expectedEvents
 
     And("only sending event info gets logged")
     logs.map(_.toString) should contain (
-      s"[INFO] Publishing events for ${instanceChange.instance.instanceId} of runSpec [$appId]: ${instanceChange.status}"
+      s"[INFO] Publishing events for ${instanceChange.instance.instanceId} of runSpec [$appId]: ${instanceChange.condition}"
     )
   }
 
@@ -203,8 +204,8 @@ class PostToEventStreamStepImplTest extends FunSuite
 
     // fixtures for healthChangedEvents testing
     private[this] val instance: Instance = TestInstanceBuilder.newBuilder(appId, version).addTaskRunning().getInstance()
-    private[this] val healthyInstanceState = InstanceState(InstanceStatus.Running, Timestamp.now(), Timestamp.now(), Some(true))
-    private[this] val unhealthyInstanceState = InstanceState(InstanceStatus.Running, Timestamp.now(), Timestamp.now(), Some(false))
+    private[this] val healthyInstanceState = InstanceState(Condition.Running, Timestamp.now(), Some(true))
+    private[this] val unhealthyInstanceState = InstanceState(Condition.Running, Timestamp.now(), Some(false))
     private[this] val healthyInstance = instance.copy(state = healthyInstanceState)
     private[this] val unHealthyInstance = instance.copy(state = unhealthyInstanceState)
 

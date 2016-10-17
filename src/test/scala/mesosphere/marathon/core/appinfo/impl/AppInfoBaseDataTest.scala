@@ -3,9 +3,10 @@ package mesosphere.marathon.core.appinfo.impl
 import mesosphere.marathon.MarathonSchedulerService
 import mesosphere.marathon.core.appinfo.{ AppInfo, EnrichedTask, TaskCounts, TaskStatsByVersion }
 import mesosphere.marathon.core.base.ConstantClock
+import mesosphere.marathon.core.condition.Condition
 import mesosphere.marathon.core.health.{ Health, HealthCheckManager }
 import mesosphere.marathon.core.instance.Instance.InstanceState
-import mesosphere.marathon.core.instance.{ Instance, InstanceStatus, TestInstanceBuilder }
+import mesosphere.marathon.core.instance.{ Instance, TestInstanceBuilder }
 import mesosphere.marathon.core.pod.{ HostNetwork, MesosContainer, PodDefinition }
 import mesosphere.marathon.core.readiness.ReadinessCheckResult
 import mesosphere.marathon.core.task.Task
@@ -362,9 +363,8 @@ class AppInfoBaseDataTest extends MarathonSpec with GivenWhenThen with Mockito w
       instanceId = instanceId,
       agentInfo = dummyAgent,
       state = InstanceState(
-        status = InstanceStatus.Running,
+        condition = Condition.Running,
         since = f.clock.now(),
-        version = pod.version,
         healthy = None),
       tasksMap = pod.containers.map { ct =>
         val taskId = Task.Id.forInstanceId(instanceId, Some(ct))
@@ -376,9 +376,10 @@ class AppInfoBaseDataTest extends MarathonSpec with GivenWhenThen with Mockito w
             stagedAt = f.clock.now(),
             startedAt = Some(f.clock.now()),
             mesosStatus = None,
-            taskStatus = InstanceStatus.Running),
+            condition = Condition.Running),
           hostPorts = Nil)
-      }.toMap)
+      }.toMap,
+      runSpecVersion = pod.version)
   }
 
   test("pod statuses xref the correct spec versions") {

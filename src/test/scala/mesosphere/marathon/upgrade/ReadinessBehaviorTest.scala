@@ -4,7 +4,7 @@ import akka.actor.{ Actor, ActorLogging, ActorRef }
 import akka.testkit.{ TestActorRef, TestProbe }
 import mesosphere.marathon.core.health.MesosCommandHealthCheck
 import mesosphere.marathon.core.instance.Instance.InstanceState
-import mesosphere.marathon.core.instance.InstanceStatus.Running
+import mesosphere.marathon.core.condition.Condition.Running
 import mesosphere.marathon.core.readiness.ReadinessCheckExecutor.ReadinessCheckSpec
 import mesosphere.marathon.core.readiness.{ ReadinessCheck, ReadinessCheckExecutor, ReadinessCheckResult }
 import mesosphere.marathon.core.task.Task
@@ -206,7 +206,7 @@ class ReadinessBehaviorTest extends FunSuite with Mockito with GivenWhenThen wit
 
     val version = Timestamp.now()
 
-    val instance = Instance(instanceId, agentInfo, InstanceState(Running, version, version, healthy = Some(true)), Map(task.taskId -> task))
+    val instance = Instance(instanceId, agentInfo, InstanceState(Running, version, healthy = Some(true)), Map(task.taskId -> task), runSpecVersion = version)
 
     val checkIsReady = Seq(ReadinessCheckResult("test", taskId, ready = true, None))
     val checkIsNotReady = Seq(ReadinessCheckResult("test", taskId, ready = false, None))
@@ -236,7 +236,7 @@ class ReadinessBehaviorTest extends FunSuite with Mockito with GivenWhenThen wit
         override def receive: Receive = readinessBehavior orElse {
           case notHandled => throw new RuntimeException(notHandled.toString)
         }
-        override def instanceStatusChanged(instanceId: Instance.Id): Unit = if (targetCountReached(1)) readyFn(instanceId)
+        override def instanceConditionChanged(instanceId: Instance.Id): Unit = if (targetCountReached(1)) readyFn(instanceId)
       }
       )
     }

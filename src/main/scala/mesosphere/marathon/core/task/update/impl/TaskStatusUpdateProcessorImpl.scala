@@ -6,13 +6,14 @@ import akka.event.EventStream
 import com.google.inject.name.Names
 import mesosphere.marathon.MarathonSchedulerDriverHolder
 import mesosphere.marathon.core.base.Clock
+import mesosphere.marathon.core.condition.Condition
 import mesosphere.marathon.core.event.UnknownInstanceTerminated
-import mesosphere.marathon.core.instance.{ Instance, InstanceStatus }
+import mesosphere.marathon.core.instance.Instance
 import mesosphere.marathon.core.instance.update.InstanceUpdateOperation
 import mesosphere.marathon.core.task.termination.{ KillReason, KillService }
 import mesosphere.marathon.core.task.tracker.{ InstanceTracker, TaskStateOpProcessor }
 import mesosphere.marathon.core.task.update.TaskStatusUpdateProcessor
-import mesosphere.marathon.core.task.{ MarathonTaskStatus, Task }
+import mesosphere.marathon.core.task.{ TaskCondition, Task }
 import mesosphere.marathon.metrics.Metrics.Timer
 import mesosphere.marathon.metrics.{ MetricPrefixes, Metrics }
 import org.apache.mesos.{ Protos => MesosProtos }
@@ -48,20 +49,20 @@ class TaskStatusUpdateProcessorImpl @Inject() (
 
     val now = clock.now()
     val taskId = Task.Id(status.getTaskId)
-    val instanceStatus = MarathonTaskStatus(status)
+    val taskCondition = TaskCondition(status)
 
     instanceTracker.instance(taskId.instanceId).flatMap {
       case Some(instance) =>
-        // TODO(PODS): we might as well pass the instanceStatus here
+        // TODO(PODS): we might as well pass the taskCondition here
         val op = InstanceUpdateOperation.MesosUpdate(instance, status, now)
         stateOpProcessor.process(op).flatMap(_ => acknowledge(status))
 
-      case None if terminalUnknown(instanceStatus) =>
+      case None if terminalUnknown(taskCondition) =>
         log.warn("Received terminal status update for unknown {}", taskId)
-        eventStream.publish(UnknownInstanceTerminated(taskId.instanceId, taskId.runSpecId, instanceStatus))
+        eventStream.publish(UnknownInstanceTerminated(taskId.instanceId, taskId.runSpecId, taskCondition))
         acknowledge(status)
 
-      case None if killWhenUnknown(instanceStatus) =>
+      case None if killWhenUnknown(taskCondition) =>
         killUnknownTaskTimer {
           log.warn("Kill unknown {}", taskId)
           killService.killUnknownTask(taskId, KillReason.Unknown)
@@ -88,28 +89,28 @@ object TaskStatusUpdateProcessorImpl {
   lazy val name = Names.named(getClass.getSimpleName)
 
   /** Matches all states that are considered terminal for an unknown task */
-  def terminalUnknown(instanceStatus: InstanceStatus): Boolean = instanceStatus match {
-    case t: InstanceStatus.Terminal => true
-    case InstanceStatus.Unreachable => true
+  def terminalUnknown(condition: Condition): Boolean = condition match {
+    case t: Condition.Terminal => true
+    case Condition.Unreachable => true
     case _ => false
   }
 
   // TODO(PODS): align this with similar extractors/functions
   private[this] val ignoreWhenUnknown = Set(
-    InstanceStatus.Killed,
-    InstanceStatus.Killing,
-    InstanceStatus.Error,
-    InstanceStatus.Failed,
-    InstanceStatus.Finished,
-    InstanceStatus.Unreachable,
-    InstanceStatus.Gone,
-    InstanceStatus.Dropped,
-    InstanceStatus.Unknown
+    Condition.Killed,
+    Condition.Killing,
+    Condition.Error,
+    Condition.Failed,
+    Condition.Finished,
+    Condition.Unreachable,
+    Condition.Gone,
+    Condition.Dropped,
+    Condition.Unknown
   )
   // It doesn't make sense to kill an unknown task if it is in a terminal or killing state
   // We'd only get another update for the same task
-  private def killWhenUnknown(instanceStatus: InstanceStatus): Boolean = {
-    !ignoreWhenUnknown.contains(instanceStatus)
+  private def killWhenUnknown(condition: Condition): Boolean = {
+    !ignoreWhenUnknown.contains(condition)
   }
 
   private def taskKnownOrNotStr(maybeTask: Option[Instance]): String = if (maybeTask.isDefined) "known" else "unknown"

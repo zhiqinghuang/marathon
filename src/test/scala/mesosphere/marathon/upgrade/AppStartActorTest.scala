@@ -1,9 +1,10 @@
 package mesosphere.marathon.upgrade
 
 import akka.testkit.{ TestActorRef, TestProbe }
+import mesosphere.marathon.core.condition.Condition
 import mesosphere.marathon.core.event.{ DeploymentStatus, InstanceChanged, InstanceHealthChanged }
 import mesosphere.marathon.core.health.MarathonHttpHealthCheck
-import mesosphere.marathon.core.instance.{ Instance, InstanceStatus }
+import mesosphere.marathon.core.instance.Instance
 import mesosphere.marathon.core.launchqueue.LaunchQueue
 import mesosphere.marathon.core.leadership.AlwaysElectedLeadershipModule
 import mesosphere.marathon.core.readiness.ReadinessCheckExecutor
@@ -31,8 +32,8 @@ class AppStartActorTest
     val ref = f.startActor(app, scaleTo = 2, promise)
     watch(ref)
 
-    system.eventStream.publish(f.instanceChanged(app, InstanceStatus.Running)) // linter:ignore:IdenticalStatements
-    system.eventStream.publish(f.instanceChanged(app, InstanceStatus.Running))
+    system.eventStream.publish(f.instanceChanged(app, Condition.Running)) // linter:ignore:IdenticalStatements
+    system.eventStream.publish(f.instanceChanged(app, Condition.Running))
 
     Await.result(promise.future, 5.seconds)
 
@@ -118,11 +119,11 @@ class AppStartActorTest
     val deploymentStatus: DeploymentStatus = mock[DeploymentStatus]
     val readinessCheckExecutor: ReadinessCheckExecutor = mock[ReadinessCheckExecutor]
 
-    def instanceChanged(app: AppDefinition, status: InstanceStatus): InstanceChanged = {
+    def instanceChanged(app: AppDefinition, condition: Condition): InstanceChanged = {
       val instanceId = Instance.Id.forRunSpec(app.id)
       val instance: Instance = mock[Instance]
       instance.instanceId returns instanceId
-      InstanceChanged(instanceId, app.version, app.id, status, instance)
+      InstanceChanged(instanceId, app.version, app.id, condition, instance)
     }
 
     def healthChanged(app: AppDefinition, healthy: Boolean): InstanceHealthChanged = {

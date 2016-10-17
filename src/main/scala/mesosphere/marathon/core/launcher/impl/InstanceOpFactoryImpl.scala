@@ -2,9 +2,10 @@ package mesosphere.marathon
 package core.launcher.impl
 
 import mesosphere.marathon.core.base.Clock
+import mesosphere.marathon.core.condition.Condition
 import mesosphere.marathon.core.instance.Instance.InstanceState
 import mesosphere.marathon.core.instance.update.InstanceUpdateOperation
-import mesosphere.marathon.core.instance.{ Instance, InstanceStatus }
+import mesosphere.marathon.core.instance.Instance
 import mesosphere.marathon.core.launcher.{ InstanceOp, InstanceOpFactory }
 import mesosphere.marathon.core.plugin.PluginManager
 import mesosphere.marathon.core.pod.PodDefinition
@@ -86,7 +87,7 @@ class InstanceOpFactoryImpl(
             runSpecVersion = runSpec.version,
             status = Task.Status(
               stagedAt = clock.now(),
-              taskStatus = InstanceStatus.Created
+              condition = Condition.Created
             ),
             hostPorts = ports.flatten
           )
@@ -183,7 +184,7 @@ class InstanceOpFactoryImpl(
           timestamp = clock.now(),
           status = Task.Status(
             stagedAt = clock.now(),
-            taskStatus = InstanceStatus.Created
+            condition = Condition.Created
           ),
           hostPorts = ports.flatten)
 
@@ -216,19 +217,20 @@ class InstanceOpFactoryImpl(
       reservation = Task.Reservation(persistentVolumeIds, Task.Reservation.State.New(timeout = Some(timeout))),
       status = Task.Status(
         stagedAt = now,
-        taskStatus = InstanceStatus.Reserved
-      )
+        condition = Condition.Reserved
+      ),
+      runSpecVersion = runSpec.version
     )
     val instance = Instance(
       instanceId = task.taskId.instanceId,
       agentInfo = agentInfo,
       state = InstanceState(
-        status = InstanceStatus.Reserved,
+        condition = Condition.Reserved,
         since = now,
-        version = runSpec.version,
         healthy = None
       ),
-      tasksMap = Map(task.taskId -> task)
+      tasksMap = Map(task.taskId -> task),
+      runSpecVersion = runSpec.version
     )
     val stateOp = InstanceUpdateOperation.Reserve(instance)
     taskOperationFactory.reserveAndCreateVolumes(frameworkId, stateOp, resourceMatch.resources, localVolumes)
@@ -274,9 +276,8 @@ object InstanceOpFactoryImpl {
     Instance(
       instanceId,
       agentInfo = agentInfo,
-      state = InstanceState(InstanceStatus.Created, since, pod.version, healthy = None),
+      state = InstanceState(Condition.Created, since, healthy = None),
       tasksMap = taskIDs.map { taskId =>
-
         // the task level host ports are needed for fine-grained status/reporting later on
         val taskHostPorts: Seq[Int] = taskId.containerName.map { ctName =>
           allocPortsByCTName.withFilter{ case (name, port) => name == ctName }.map(_._2)
@@ -286,11 +287,12 @@ object InstanceOpFactoryImpl {
           taskId = taskId,
           agentInfo = agentInfo,
           runSpecVersion = pod.version,
-          status = Task.Status(stagedAt = since, taskStatus = InstanceStatus.Created),
+          status = Task.Status(stagedAt = since, condition = Condition.Created),
           hostPorts = taskHostPorts
         )
         task.taskId -> task
-      }(collection.breakOut)
+      }(collection.breakOut),
+      runSpecVersion = pod.version
     )
   } // inferPodInstance
 }

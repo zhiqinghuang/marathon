@@ -2,8 +2,9 @@ package mesosphere.marathon
 package tasks
 
 import mesosphere.marathon.core.base.ConstantClock
+import mesosphere.marathon.core.condition.Condition
 import mesosphere.marathon.core.instance.update.InstanceUpdateOperation
-import mesosphere.marathon.core.instance.{ Instance, InstanceStatus, TestInstanceBuilder }
+import mesosphere.marathon.core.instance.{ Instance, TestInstanceBuilder }
 import mesosphere.marathon.core.launcher.impl.InstanceOpFactoryImpl
 import mesosphere.marathon.core.launcher.{ InstanceOp, InstanceOpFactory }
 import mesosphere.marathon.core.task.Task
@@ -50,11 +51,11 @@ class InstanceOpFactoryImplTest extends MarathonSpec with GivenWhenThen with Moc
       runSpecVersion = app.version,
       status = Task.Status(
         stagedAt = f.clock.now(),
-        taskStatus = InstanceStatus.Created
+        condition = Condition.Created
       ),
       hostPorts = Seq.empty
     )
-    val expectedInstance = Instance(expectedTaskId.instanceId, expectedTask.agentInfo, instance.state, Map(expectedTaskId -> expectedTask))
+    val expectedInstance = Instance(expectedTaskId.instanceId, expectedTask.agentInfo, instance.state, Map(expectedTaskId -> expectedTask), runSpecVersion = app.version)
     assert(inferredTaskOp.isDefined, "task op is not empty")
     assert(inferredTaskOp.get.stateOp == InstanceUpdateOperation.LaunchEphemeral(expectedInstance))
   }

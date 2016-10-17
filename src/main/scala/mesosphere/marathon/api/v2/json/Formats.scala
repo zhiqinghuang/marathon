@@ -131,7 +131,7 @@ trait Formats
           "startedAt" -> launched.status.startedAt,
           "stagedAt" -> launched.status.stagedAt,
           "ports" -> launched.hostPorts,
-          "version" -> launched.runSpecVersion
+          "version" -> task.runSpecVersion
         )
       ){
           case (launchedJs, ipAddresses) => launchedJs ++ Json.obj("ipAddresses" -> ipAddresses)
@@ -613,7 +613,7 @@ trait EventFormats {
   implicit lazy val InstanceChangedEventWrites: Writes[InstanceChanged] = Writes { change =>
     Json.obj(
       "instanceId" -> change.id,
-      "instanceStatus" -> change.status.toString,
+      "condition" -> change.condition.toString,
       "runSpecId" -> change.runSpecId,
       "agentId" -> change.instance.agentInfo.agentId,
       "host" -> change.instance.agentInfo.host,
@@ -636,7 +636,7 @@ trait EventFormats {
     Json.obj(
       "instanceId" -> change.id,
       "runSpecId" -> change.runSpecId,
-      "instanceStatus" -> change.status.toString,
+      "condition" -> change.condition.toString,
       "timestamp" -> change.timestamp,
       "eventType" -> change.eventType
     )

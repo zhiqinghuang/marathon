@@ -2,11 +2,12 @@ package mesosphere.marathon.upgrade
 
 import akka.testkit.{ TestActorRef, TestProbe }
 import com.codahale.metrics.MetricRegistry
+import mesosphere.marathon.core.condition.Condition
 import mesosphere.marathon.core.event.{ DeploymentStatus, _ }
 import mesosphere.marathon.core.health.MesosCommandHealthCheck
-import mesosphere.marathon.core.instance.InstanceStatus.{ Failed, Running }
+import mesosphere.marathon.core.condition.Condition.{ Failed, Running }
 import mesosphere.marathon.core.instance.update.InstanceUpdateOperation
-import mesosphere.marathon.core.instance.{ Instance, InstanceStatus, TestInstanceBuilder }
+import mesosphere.marathon.core.instance.{ Instance, TestInstanceBuilder }
 import mesosphere.marathon.core.launcher.impl.LaunchQueueTestHelper
 import mesosphere.marathon.core.launchqueue.LaunchQueue
 import mesosphere.marathon.core.leadership.AlwaysElectedLeadershipModule
@@ -224,7 +225,7 @@ class TaskStartActorTest
     when(f.launchQueue.get(app.id)).thenReturn(Some(LaunchQueueTestHelper.zeroCounts.copy(instancesLeftToLaunch = 4, finalInstanceCount = 4)))
     // The version does not match the app.version so that it is filtered in StartingBehavior.
     // does that make sense?
-    system.eventStream.publish(f.instanceChange(app, instanceId, InstanceStatus.Error).copy(runSpecVersion = outdatedInstance.tasks.head.launched.get.runSpecVersion))
+    system.eventStream.publish(f.instanceChange(app, instanceId, Condition.Error).copy(runSpecVersion = outdatedInstance.tasks.head.runSpecVersion))
 
     // sync will reschedule task
     ref ! StartingBehavior.Sync
@@ -264,10 +265,10 @@ class TaskStartActorTest
     val status: DeploymentStatus = mock[DeploymentStatus]
     val readinessCheckExecutor: ReadinessCheckExecutor = mock[ReadinessCheckExecutor]
 
-    def instanceChange(app: AppDefinition, id: Instance.Id, status: InstanceStatus): InstanceChanged = {
+    def instanceChange(app: AppDefinition, id: Instance.Id, condition: Condition): InstanceChanged = {
       val instance: Instance = mock[Instance]
       instance.instanceId returns id
-      InstanceChanged(id, app.version, app.id, status, instance)
+      InstanceChanged(id, app.version, app.id, condition, instance)
     }
 
     def healthChange(app: AppDefinition, id: Instance.Id, healthy: Boolean): InstanceHealthChanged = {

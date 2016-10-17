@@ -1,7 +1,8 @@
 package mesosphere.marathon.core.appinfo
 
+import mesosphere.marathon.core.condition.Condition
 import mesosphere.marathon.core.health.Health
-import mesosphere.marathon.core.instance.{ Instance, InstanceStatus, TestTaskBuilder }
+import mesosphere.marathon.core.instance.{ Instance, TestTaskBuilder }
 import mesosphere.marathon.core.task.Task
 import mesosphere.marathon.state.{ PathId, Timestamp }
 import mesosphere.marathon.test.{ MarathonSpec, Mockito }
@@ -195,7 +196,7 @@ class Fixture {
       stagedAt = Timestamp(1),
       startedAt = None,
       mesosStatus = None,
-      taskStatus = InstanceStatus.Running
+      condition = Condition.Running
     ),
     hostPorts = Seq.empty
   )

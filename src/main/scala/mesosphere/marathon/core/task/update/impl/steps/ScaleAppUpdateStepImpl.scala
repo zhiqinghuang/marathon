@@ -6,7 +6,7 @@ import akka.Done
 import akka.actor.ActorRef
 import com.google.inject.{ Inject, Provider }
 import mesosphere.marathon.MarathonSchedulerActor.ScaleRunSpec
-import mesosphere.marathon.core.instance.InstanceStatus
+import mesosphere.marathon.core.condition.Condition
 import mesosphere.marathon.core.instance.update.{ InstanceChange, InstanceChangeHandler }
 import org.slf4j.LoggerFactory
 
@@ -25,15 +25,15 @@ class ScaleAppUpdateStepImpl @Inject() (
 
   override def process(update: InstanceChange): Future[Done] = {
     // TODO(PODS): it should be up to a tbd TaskUnreachableBehavior how to handle Unreachable
-    update.status match {
-      case InstanceStatus.Reserved | InstanceStatus.Unreachable | InstanceStatus.Terminal(_) =>
+    update.condition match {
+      case Condition.Reserved | Condition.Unreachable | Condition.Terminal(_) =>
         val runSpecId = update.runSpecId
         val instanceId = update.id
-        val state = update.status
+        val state = update.condition
         log.info(s"initiating a scale check for runSpec [$runSpecId] due to [$instanceId] $state")
         // TODO(PODS): we should rename the Message and make the SchedulerActor generic
         // only dispatch ScaleRunSpec if last state was not terminal and current new state is terminal
-        if (update.lastState.forall(!_.status.isTerminal) && update.status.isTerminal) {
+        if (update.lastState.forall(!_.condition.isTerminal) && update.condition.isTerminal) {
           schedulerActor ! ScaleRunSpec(runSpecId)
         }
 

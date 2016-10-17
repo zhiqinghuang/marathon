@@ -1,5 +1,6 @@
 package mesosphere.marathon.core.instance
 
+import mesosphere.marathon.core.condition.Condition
 import mesosphere.marathon.core.instance.Instance.InstanceState
 import mesosphere.marathon.core.instance.update.InstanceUpdateOperation
 import mesosphere.marathon.core.pod.MesosContainer
@@ -85,7 +86,7 @@ case class TestInstanceBuilder(
   def stateOpUpdate(mesosStatus: mesos.Protos.TaskStatus) = InstanceUpdateOperation.MesosUpdate(instance, mesosStatus, now)
 
   def taskLaunchedOp(): InstanceUpdateOperation.LaunchOnReservation = {
-    InstanceUpdateOperation.LaunchOnReservation(instanceId = instance.instanceId, timestamp = now, runSpecVersion = instance.runSpecVersion, status = Task.Status(stagedAt = now, taskStatus = InstanceStatus.Running), hostPorts = Seq.empty)
+    InstanceUpdateOperation.LaunchOnReservation(instanceId = instance.instanceId, timestamp = now, runSpecVersion = instance.runSpecVersion, status = Task.Status(stagedAt = now, condition = Condition.Running), hostPorts = Seq.empty)
   }
 
   def stateOpExpunge() = InstanceUpdateOperation.ForceExpunge(instance.instanceId)
@@ -98,8 +99,9 @@ object TestInstanceBuilder {
   def emptyInstance(now: Timestamp = Timestamp.now(), version: Timestamp = Timestamp.zero, instanceId: Instance.Id): Instance = Instance(
     instanceId = instanceId,
     agentInfo = TestInstanceBuilder.defaultAgentInfo,
-    state = InstanceState(InstanceStatus.Created, now, version, healthy = None),
-    tasksMap = Map.empty
+    state = InstanceState(Condition.Created, now, healthy = None),
+    tasksMap = Map.empty,
+    runSpecVersion = version
   )
 
   private val defaultAgentInfo = Instance.AgentInfo(host = "host.some", agentId = None, attributes = Seq.empty)

@@ -3,7 +3,8 @@ package mesosphere.marathon.core.launcher.impl
 import akka.Done
 import com.codahale.metrics.MetricRegistry
 import mesosphere.marathon.core.base.ConstantClock
-import mesosphere.marathon.core.instance.{ Instance, InstanceStatus, TestInstanceBuilder }
+import mesosphere.marathon.core.condition.Condition
+import mesosphere.marathon.core.instance.{ Instance, TestInstanceBuilder }
 import mesosphere.marathon.core.instance.update.InstanceUpdateOperation
 import mesosphere.marathon.core.launcher.{ InstanceOp, OfferProcessor, OfferProcessorConfig, TaskLauncher }
 import mesosphere.marathon.core.matcher.base.OfferMatcher
@@ -121,7 +122,7 @@ class OfferProcessorImplTest extends MarathonSpec with GivenWhenThen with Mockit
         instanceId = dummyTask.instanceId,
         runSpecVersion = clock.now(),
         timestamp = clock.now(),
-        status = Task.Status(clock.now(), taskStatus = InstanceStatus.Running),
+        status = Task.Status(clock.now(), condition = Condition.Running),
         hostPorts = Seq.empty)
       val launch = f.launchWithOldTask(
         task._1,
