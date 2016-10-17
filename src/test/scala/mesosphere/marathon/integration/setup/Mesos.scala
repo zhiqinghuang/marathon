@@ -93,7 +93,8 @@ case class MesosLocal(numSlaves: Int = 1, autoStart: Boolean = true,
   }
 
   private def create(): Process = {
-    val process = Process(s"mesos-local --ip=127.0.0.1 --port=$port", cwd = None, mesosEnv: _*)
+    val process = Process(s"mesos-local --ip=127.0.0.1 --port=$port --work_dir=${mesosWorkDir.getAbsolutePath}",
+      cwd = None, mesosEnv: _*)
     if (logStdout) {
       process.run()
     } else {
@@ -183,7 +184,7 @@ case class MesosCluster(
   }
 
   private def defaultContainerizers: String = {
-    if (sys.env.getOrElse("RUN_DOCKER_INTEGRATION_TESTS", "true") == "true") {
+    if (sys.env.getOrElse("RUN_DOCKER_INTEGRATION_TESTS", "false") == "true") {
       "docker,mesos"
     } else {
       "mesos"

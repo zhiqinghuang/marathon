@@ -9,7 +9,9 @@ import mesosphere.marathon.state.{ AppDefinition, Container }
 import scala.concurrent.duration._
 
 @IntegrationTest
-class DockerAppIntegrationTest extends AkkaIntegrationFunTest with EmbeddedMarathonTest {
+class DockerAppIntegrationTest extends AkkaIntegrationFunTest with EmbeddedMarathonTest with RunInEnvironment {
+  override val envVar = "RUN_DOCKER_INTEGRATION_TESTS"
+
   //clean up state before running the test case
   before(cleanUp())
 

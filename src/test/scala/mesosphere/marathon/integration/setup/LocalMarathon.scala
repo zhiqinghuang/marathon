@@ -19,7 +19,7 @@ import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
 import com.typesafe.scalalogging.StrictLogging
 import mesosphere.marathon.core.health.{ HealthCheck, MarathonHttpHealthCheck }
 import mesosphere.marathon.integration.facades.{ ITDeploymentResult, ITEnrichedTask, MarathonFacade, MesosFacade }
-import mesosphere.marathon.raml.Resources
+import mesosphere.marathon.raml.{ PodState, PodStatus, Resources }
 import mesosphere.marathon.state.{ AppDefinition, Container, DockerVolume, PathId }
 import mesosphere.marathon.test.ExitDisabledTest
 import mesosphere.marathon.util.{ Lock, Retry }
@@ -67,7 +67,9 @@ case class LocalMarathon(
 
   lazy val uuid = UUID.randomUUID.toString
   lazy val httpPort = PortAllocator.ephemeralPort()
-  private val logger = LoggerFactory.getLogger(s"LocalMarathon:$httpPort")
+  private lazy val logger = LoggerFactory.getLogger(s"LocalMarathon:$httpPort")
+  lazy val url = conf.get("https_port").fold(s"http://localhost:$httpPort")(httpsPort => s"https://localhost:$httpsPort")
+  lazy val client = new MarathonFacade(url, PathId.empty)
 
   private val workDir = {
     val f = Files.createTempDirectory(s"marathon-$httpPort").toFile
@@ -94,10 +96,17 @@ case class LocalMarathon(
     "event_subscriber" -> "http_callback",
     "access_control_allow_origin" -> "*",
     "reconciliation_initial_delay" -> "600000",
-    "min_revive_offers_interval" -> "100"
+    "min_revive_offers_interval" -> "100",
+    "hostname" -> "localhost"
   ) ++ conf
 
-  val args = config.flatMap { case (k, v) => Seq(s"--$k", v) }(collection.breakOut)
+  val args = config.flatMap { case (k, v) =>
+    if (v.nonEmpty) {
+      Seq(s"--$k", v)
+    } else {
+      Seq(s"--$k")
+    }
+  }(collection.breakOut)
 
   private var marathon = Option.empty[Process]
 
@@ -106,7 +115,7 @@ case class LocalMarathon(
   }
 
   // it'd be great to be able to execute in memory, but we can't due to GuiceFilter using a static :(
-  private val processBuilder = {
+  private lazy val processBuilder = {
     val java = sys.props.get("java.home").fold("java")(_ + "/bin/java")
     val cp = sys.props.getOrElse("java.class.path", "target/classes")
     val memSettings = s"-Xmx${Runtime.getRuntime.maxMemory()}"
@@ -125,21 +134,20 @@ case class LocalMarathon(
   def start(): Future[Done] = {
     if (marathon.isEmpty) {
       marathon = Some(create())
-      val future = Retry(s"marathon-$httpPort", Int.MaxValue, 1.milli, 5.seconds) {
-        async {
-          val result = await(Http(system).singleRequest(Get(s"http://localhost:$httpPort/v2/leader")))
-          if (result.status.isSuccess()) { // linter:ignore //async/await
-            Done
-          } else {
-            throw new Exception("Marathon not ready yet.")
-          }
+    }
+    val port = conf.get("http_port").orElse(conf.get("https_port")).map(_.toInt).getOrElse(httpPort)
+    val future = Retry(s"marathon-$port", Int.MaxValue, 1.milli, 5.seconds) {
+      async {
+        val result = await(Http(system).singleRequest(Get(s"http://localhost:$port/v2/leader")))
+        if (result.status.isSuccess()) { // linter:ignore //async/await
+          Done
+        } else {
+          throw new Exception("Marathon not ready yet.")
         }
       }
-      future.onFailure { case _ => marathon = Option.empty[Process] }
-      future
-    } else {
-      Future.successful(Done)
     }
+    future.onFailure { case _ => marathon = Option.empty[Process] }
+    future
   }
 
   def stop(): Unit = {
@@ -298,21 +306,41 @@ trait MarathonTest extends Suite with StrictLogging with ScalaFutures with Befor
     )
   }
 
+  private def appProxyMainInvocationExternal(targetDir: String): String = {
+    val projectDir = sys.props.getOrElse("user.dir", ".")
+    val homeDir = sys.props.getOrElse("user.home", "~")
+    val classPath = sys.props.getOrElse("java.class.path", "target/classes")
+      .replaceAll(" ", "")
+      .replace(s"$projectDir/target", s"$targetDir/target")
+      .replace(s"$homeDir/.ivy2", s"$targetDir/.ivy2")
+      .replace(s"$homeDir/.sbt", s"$targetDir/.sbt")
+    val id = UUID.randomUUID.toString
+    appProxyIds(_ += id)
+    val main = classOf[AppMock].getName
+    s"""java -Xmx64m -classpath -DappProxyId=$id -DtestSuite=$suiteName $classPath $main"""
+  }
+
+  def appProxyCommand(appId: PathId, versionId: String, containerDir: String, port: String) = {
+    val appProxy = appProxyMainInvocationExternal(containerDir)
+    s"""echo APP PROXY $$MESOS_TASK_ID RUNNING; $appProxy $port $appId $versionId $marathonUrl/health$appId/$versionId"""
+  }
+
   def dockerAppProxy(appId: PathId, versionId: String, instances: Int, withHealth: Boolean = true, dependencies: Set[PathId] = Set.empty): AppDefinition = {
-    val targetDirs = sys.env.getOrElse("TARGET_DIRS", "/marathon")
-    val cmd = Some(s"""bash -c 'echo APP PROXY $$MESOS_TASK_ID RUNNING; $appProxyMainInvocationImpl $appId $versionId http://$$HOST:${PortAllocator.ephemeralPort()}/health$appId/$versionId'""")
+    val projectDir = sys.props.getOrElse("user.dir", ".")
+    val homeDir = sys.props.getOrElse("user.home", "~")
+    val containerDir = "/opt/marathon"
+
+    val cmd = Some(appProxyCommand(appId, versionId, containerDir, "$PORT0"))
     AppDefinition(
       id = appId,
       cmd = cmd,
       container = Some(Container.Docker(
-        image = s"""marathon-buildbase:${sys.env.getOrElse("BUILD_ID", "test")}""",
+        image = "openjdk:8-jre-alpine",
         network = Some(Protos.ContainerInfo.DockerInfo.Network.HOST),
         volumes = collection.immutable.Seq(
-          new DockerVolume(hostPath = sys.env.getOrElse("IVY2_DIR", "/root/.ivy2"), containerPath = "/root/.ivy2", mode = Protos.Volume.Mode.RO),
-          new DockerVolume(hostPath = sys.env.getOrElse("SBT_DIR", "/root/.sbt"), containerPath = "/root/.sbt", mode = Protos.Volume.Mode.RO),
-          new DockerVolume(hostPath = sys.env.getOrElse("SBT_DIR", "/root/.sbt"), containerPath = "/root/.sbt", mode = Protos.Volume.Mode.RO),
-          new DockerVolume(hostPath = s"""$targetDirs/main""", containerPath = "/marathon/target", mode = Protos.Volume.Mode.RO),
-          new DockerVolume(hostPath = s"""$targetDirs/project""", containerPath = "/marathon/project/target", mode = Protos.Volume.Mode.RO)
+          new DockerVolume(hostPath = s"$homeDir/.ivy2", containerPath = s"$containerDir/.ivy2", mode = Protos.Volume.Mode.RO),
+          new DockerVolume(hostPath = s"$homeDir/.sbt", containerPath = s"$containerDir/.sbt", mode = Protos.Volume.Mode.RO),
+          new DockerVolume(hostPath = s"$projectDir/target", containerPath = s"$containerDir/target", mode = Protos.Volume.Mode.RO)
         )
       )),
       instances = instances,
@@ -444,6 +472,13 @@ trait MarathonTest extends Suite with StrictLogging with ScalaFutures with Befor
   def waitForChange(change: RestResult[ITDeploymentResult], maxWait: FiniteDuration = patienceConfig.timeout.toMillis.millis): CallbackEvent = {
     waitForDeploymentId(change.value.deploymentId, maxWait)
   }
+
+  def waitForPod(podId: PathId, maxWait: FiniteDuration = patienceConfig.timeout.toMillis.millis): PodStatus = {
+    def checkPods = {
+      Try(marathon.status(podId)).map(_.value).toOption.filter(_.status == PodState.Stable)
+    }
+    WaitTestSupport.waitFor(s"Pod $podId to launch", maxWait)(checkPods)
+  }
 }
 
 /**
@@ -464,7 +499,7 @@ trait LocalMarathonTest
   lazy val marathonUrl = s"http://localhost:${marathonServer.httpPort}"
 
   val testBasePath: PathId = PathId("/")
-  lazy val marathon = new MarathonFacade(marathonUrl, testBasePath)
+  lazy val marathon = marathonServer.client
   lazy val appMock: AppMockFacade = new AppMockFacade()
 
   abstract override def beforeAll(): Unit = {
@@ -499,9 +534,7 @@ trait MarathonClusterTest extends Suite with StrictLogging with ZookeeperServerT
       zkUrl = s"zk://${zkServer.connectUri}/marathon",
       conf = marathonArgs)
   }
-  lazy val marathonFacades = marathon +: additionalMarathons.map { m =>
-    new MarathonFacade(s"http://localhost:${m.httpPort}", testBasePath)
-  }
+  lazy val marathonFacades = marathon +: additionalMarathons.map(_.client)
 
   override def beforeAll(): Unit = {
     super.beforeAll()

@@ -1,18 +1,19 @@
-package mesosphere.marathon.integration.setup
+package mesosphere.marathon
+package integration.setup
 
+import mesosphere.AkkaIntegrationFunTest
 import mesosphere.marathon.core.pod.{ HostNetwork, HostVolume, MesosContainer, PodDefinition }
 import mesosphere.marathon.integration.facades.MarathonFacade._
-import mesosphere.marathon.integration.setup.ProcessKeeper.MesosConfig
-import mesosphere.marathon.raml
 import mesosphere.marathon.state.{ AppDefinition, Container }
 import org.scalatest.{ BeforeAndAfter, GivenWhenThen, Matchers }
 
 import scala.collection.immutable.Seq
 import scala.concurrent.duration._
 
+@IntegrationTest
 class MesosAppIntegrationTest
-    extends IntegrationFunSuite
-    with SingleMarathonIntegrationTest
+    extends AkkaIntegrationFunTest
+    with EmbeddedMarathonTest
     with Matchers
     with BeforeAndAfter
     with GivenWhenThen
@@ -21,16 +22,6 @@ class MesosAppIntegrationTest
   // Integration tests using docker image provisioning with the Mesos containerizer need to be
   // run as root in a Linux environment. They have to be explicitly enabled through an env variable.
   override val envVar = "RUN_MESOS_INTEGRATION_TESTS"
-
-  // Configure Mesos to provide the Mesos containerizer with Docker image support.
-  override def startMesos(): Unit = {
-    ProcessKeeper.startMesosLocal(MesosConfig(
-      port = config.mesosPort,
-      launcher = "linux",
-      containerizers = "mesos",
-      isolation = Some("filesystem/linux,docker/runtime"),
-      imageProviders = Some("docker")))
-  }
 
   //clean up state before running the test case
   before(cleanUp())

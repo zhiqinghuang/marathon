@@ -101,18 +101,17 @@ class TaskLostIntegrationTest extends AkkaIntegrationFunTest with EmbeddedMarath
       .build
 
     // start both slaves
-    if (!ProcessKeeper.hasProcess(slave1)) startSlave(slave1)
-    if (!ProcessKeeper.hasProcess(slave2)) startSlave(slave2)
+    mesosCluster.agents.foreach(_.start())
 
     val app = appProxy(testBasePath / "app", "v1", instances = 2, withHealth = false).copy(constraints = Set(constraint))
 
     marathon.createAppV2(app)
     waitForEvent("deployment_success")
     val enrichedTasks = waitForTasks(app.id, 2)
-    val task = enrichedTasks.find(t => t.host == slave1).getOrElse(throw new RuntimeException("No matching task found on slave1"))
+    val task = enrichedTasks.find(t => t.host == "0").getOrElse(throw new RuntimeException("No matching task found on slave1"))
 
     When("agent1 is stopped")
-    stopMesos(slave1)
+    mesosCluster.agents.head.stop()
     Then("one task is declared lost")
     waitForEventMatching("Task is declared lost") { matchEvent("TASK_LOST", task) }
 
@@ -134,7 +133,7 @@ class TaskLostIntegrationTest extends AkkaIntegrationFunTest with EmbeddedMarath
     val task = enrichedTasks.headOption.getOrElse(throw new RuntimeException("No matching task found"))
 
     When("agent1 is stopped")
-    stopMesos(slave1)
+    mesosCluster.agents.head.stop()
     Then("one task is declared lost")
     waitForEventMatching("Task is declared lost") { matchEvent("TASK_LOST", task) }
 
@@ -173,7 +172,7 @@ class TaskLostIntegrationTest extends AkkaIntegrationFunTest with EmbeddedMarath
 
   def matchDeploymentSuccess(instanceCount: Int, appId: String): CallbackEvent => Boolean = { event =>
     val infoString = event.info.toString()
-    event.eventType == "deployment_success" && infoString.contains("instances -> 1") &&
+    event.eventType == "deployment_success" && infoString.contains(s"instances -> $instanceCount") &&
       infoString.contains(s"List(Map(actions -> List(Map(action -> ScaleApplication, app -> $appId)))))")
   }
 

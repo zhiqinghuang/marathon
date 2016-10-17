@@ -2,6 +2,7 @@ package mesosphere.marathon.integration.setup
 
 import mesosphere.marathon.state.PathId
 import org.joda.time.DateTime
+import org.scalactic.source.Position
 import org.scalatest._
 
 import scala.concurrent.duration._
