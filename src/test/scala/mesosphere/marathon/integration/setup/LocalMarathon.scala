@@ -322,7 +322,7 @@ trait MarathonTest extends Suite with StrictLogging with ScalaFutures with Befor
     )
   }
 
-  def waitForTasks(appId: PathId, num: Int, maxWait: FiniteDuration = 30.seconds): List[ITEnrichedTask] = {
+  def waitForTasks(appId: PathId, num: Int, maxWait: FiniteDuration = patienceConfig.timeout.toMillis.millis): List[ITEnrichedTask] = {
     def checkTasks: Option[List[ITEnrichedTask]] = {
       val tasks = Try(marathon.tasks(appId)).map(_.value).getOrElse(Nil).filter(_.launched)
       if (tasks.size == num) Some(tasks) else None
@@ -339,7 +339,7 @@ trait MarathonTest extends Suite with StrictLogging with ScalaFutures with Befor
       waitForChange(deleteResult)
     }
 
-    WaitTestSupport.waitUntil("clean slate in Mesos", 45.seconds) {
+    WaitTestSupport.waitUntil("clean slate in Mesos", patienceConfig.timeout.toMillis.millis) {
       mesos.state.value.agents.map { agent =>
         val empty = agent.usedResources.isEmpty && agent.reservedResourcesByRole.isEmpty
         if (!empty) {
@@ -375,11 +375,11 @@ trait MarathonTest extends Suite with StrictLogging with ScalaFutures with Befor
     check
   }
 
-  def waitForHealthCheck(check: IntegrationHealthCheck, maxWait: FiniteDuration = 30.seconds) = {
+  def waitForHealthCheck(check: IntegrationHealthCheck, maxWait: FiniteDuration = patienceConfig.timeout.toMillis.millis) = {
     WaitTestSupport.waitUntil("Health check to get queried", maxWait) { check.pinged }
   }
 
-  def waitForDeploymentId(deploymentId: String, maxWait: FiniteDuration = 30.seconds): CallbackEvent = {
+  def waitForDeploymentId(deploymentId: String, maxWait: FiniteDuration = patienceConfig.timeout.toMillis.millis): CallbackEvent = {
     waitForEventWith("deployment_success", _.id == deploymentId, maxWait)
   }
 
@@ -389,12 +389,12 @@ trait MarathonTest extends Suite with StrictLogging with ScalaFutures with Befor
 
   def waitForEvent(
     kind: String,
-    maxWait: FiniteDuration = 60.seconds): CallbackEvent =
+    maxWait: FiniteDuration = patienceConfig.timeout.toMillis.millis): CallbackEvent =
     waitForEventWith(kind, _ => true, maxWait)
 
   def waitForEventWith(
     kind: String,
-    fn: CallbackEvent => Boolean, maxWait: FiniteDuration = 45.seconds): CallbackEvent = {
+    fn: CallbackEvent => Boolean, maxWait: FiniteDuration = patienceConfig.timeout.toMillis.millis): CallbackEvent = {
     waitForEventMatching(s"event $kind to arrive", maxWait) { event =>
       event.eventType == kind && fn(event)
     }
@@ -402,7 +402,7 @@ trait MarathonTest extends Suite with StrictLogging with ScalaFutures with Befor
 
   def waitForEventMatching(
     description: String,
-    maxWait: FiniteDuration = 45.seconds)(fn: CallbackEvent => Boolean): CallbackEvent = {
+    maxWait: FiniteDuration = patienceConfig.timeout.toMillis.millis)(fn: CallbackEvent => Boolean): CallbackEvent = {
     @tailrec
     def nextEvent: Option[CallbackEvent] = if (events.isEmpty) None else {
       val event = events.poll()
@@ -414,7 +414,7 @@ trait MarathonTest extends Suite with StrictLogging with ScalaFutures with Befor
   /**
     * Wait for the events of the given kinds (=types).
     */
-  def waitForEvents(kinds: String*)(maxWait: FiniteDuration = 45.seconds): Map[String, Seq[CallbackEvent]] = {
+  def waitForEvents(kinds: String*)(maxWait: FiniteDuration = patienceConfig.timeout.toMillis.millis): Map[String, Seq[CallbackEvent]] = {
 
     val deadline = maxWait.fromNow
 
@@ -441,7 +441,7 @@ trait MarathonTest extends Suite with StrictLogging with ScalaFutures with Befor
     receivedEventsForKinds.groupBy(_.eventType)
   }
 
-  def waitForChange(change: RestResult[ITDeploymentResult], maxWait: FiniteDuration = 45.seconds): CallbackEvent = {
+  def waitForChange(change: RestResult[ITDeploymentResult], maxWait: FiniteDuration = patienceConfig.timeout.toMillis.millis): CallbackEvent = {
     waitForDeploymentId(change.value.deploymentId, maxWait)
   }
 }
