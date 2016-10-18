@@ -3,6 +3,7 @@ package mesosphere.marathon.integration.setup
 import java.io.File
 import java.nio.file.Files
 
+import akka.Done
 import akka.actor.{ ActorSystem, Scheduler }
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.client.RequestBuilding.Get
@@ -15,9 +16,10 @@ import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{ BeforeAndAfterAll, Suite }
 
 import scala.concurrent.duration._
-import scala.concurrent.{ Await, ExecutionContext }
+import scala.concurrent.{ Await, ExecutionContext, Future }
 import scala.sys.process.{ Process, ProcessLogger }
 import scala.util.Try
+import scala.async.Async._
 
 /**
   * Runs a mesos-local on a ephemeral port
@@ -109,12 +111,19 @@ case class MesosLocal(numSlaves: Int = 1, autoStart: Boolean = true,
     start()
   }
 
-  def start(): Unit = if (mesosLocal.isEmpty) {
-    mesosLocal = Some(create())
-    val mesosUp = Retry(s"mesos-local-$port", Int.MaxValue, maxDelay = waitForStart) {
-      Http(system).singleRequest(Get(s"http://localhost:$port/version"))
+  def start(): Future[Done] = {
+    if (mesosLocal.isEmpty) {
+      mesosLocal = Some(create())
     }
-    Await.result(mesosUp, waitForStart)
+    Retry(s"mesos-local-$port", Int.MaxValue, maxDelay = waitForStart) {
+      Http(system).singleRequest(Get(s"http://localhost:$port/version")).map { result =>
+        if (result.status.isSuccess()) {
+          Done
+        } else {
+          throw new Exception(s"Mesos-local-$port not available")
+        }
+      }
+    }
   }
 
   def stop(): Unit = {
@@ -160,23 +169,23 @@ case class MesosCluster(
     start()
   }
 
-  def start(): Unit = {
+  def start(): Future[String] = {
     masters.foreach(_.start())
     agents.foreach(_.start())
     waitForLeader()
   }
 
-  def waitForLeader(): String = {
-    val result = Await.result(Retry("wait for leader", maxAttempts = Int.MaxValue, maxDelay = waitForLeaderTimeout) {
+  def waitForLeader(): Future[String] = async {
+    val result = Retry("wait for leader", maxAttempts = Int.MaxValue, maxDelay = waitForLeaderTimeout) {
       Http().singleRequest(Get(s"http://localhost:${masters.head.port}/redirect")).map { result =>
         if (result.status.isFailure()) {
           throw new Exception(s"Couldn't determine leader: $result")
         }
         result
       }
-    }, waitForLeaderTimeout)
+    }
 
-    result.headers.find(_.lowercaseName() == "location").map(_.value()).get
+    await(result).headers.find(_.lowercaseName() == "location").map(_.value()).get
   }
 
   def stop(): Unit = {
@@ -294,20 +303,20 @@ trait SimulatedMesosTest extends MesosTest {
   val mesosMasterUrl = ""
 }
 
-trait MesosLocalTest extends MesosTest with BeforeAndAfterAll { this: Suite with ScalaFutures =>
+trait MesosLocalTest extends Suite with ScalaFutures with MesosTest with BeforeAndAfterAll {
   implicit val system: ActorSystem
   implicit val mat: Materializer
   implicit val ctx: ExecutionContext
   implicit val scheduler: Scheduler
 
-  val mesosLocalServer = MesosLocal(autoStart = false)
+  val mesosLocalServer = MesosLocal(autoStart = false, waitForStart = patienceConfig.timeout.toMillis.milliseconds)
   val port = mesosLocalServer.port
   val mesosMasterUrl = mesosLocalServer.masterUrl
   lazy val mesos = new MesosFacade(s"http://$mesosMasterUrl")
 
   abstract override def beforeAll(): Unit = {
     super.beforeAll()
-    mesosLocalServer.start()
+    mesosLocalServer.start().futureValue
   }
 
   abstract override def afterAll(): Unit = {
@@ -316,8 +325,8 @@ trait MesosLocalTest extends MesosTest with BeforeAndAfterAll { this: Suite with
   }
 }
 
-trait MesosClusterTest extends MesosTest
-    with BeforeAndAfterAll { this: Suite with ZookeeperServerTest with ScalaFutures =>
+trait MesosClusterTest extends Suite with ZookeeperServerTest with MesosTest with ScalaFutures
+    with BeforeAndAfterAll {
   implicit val system: ActorSystem
   implicit val mat: Materializer
   implicit val ctx: ExecutionContext
@@ -329,14 +338,14 @@ trait MesosClusterTest extends MesosTest
   lazy val mesosQuorumSize = 1
   lazy val mesosContainerizers = Option.empty[String]
   lazy val mesosLogStdout = false
-  lazy val mesosLeaderTimeout: Duration = 30.seconds
+  lazy val mesosLeaderTimeout: Duration = patienceConfig.timeout.toMillis.milliseconds
   lazy val mesosCluster = MesosCluster(mesosNumMasters, mesosNumSlaves, mesosMasterUrl, mesosQuorumSize,
     autoStart = false, mesosContainerizers, mesosLogStdout, mesosLeaderTimeout)
   lazy val mesos = new MesosFacade(s"http:${mesosCluster.waitForLeader()}")
 
   abstract override def beforeAll(): Unit = {
     super.beforeAll()
-    mesosCluster.start()
+    mesosCluster.start().futureValue
   }
 
   abstract override def afterAll(): Unit = {
