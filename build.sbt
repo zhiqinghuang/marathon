@@ -126,18 +126,19 @@ lazy val commonSettings = inConfig(IntegrationTest)(Defaults.testTasks) ++ Seq(
 
   fork in IntegrationTest := true,
   testOptions in IntegrationTest := Seq(formattingTestArg(target.value / "test-reports" / "integration"), Tests.Argument("-n", "mesosphere.marathon.IntegrationTest")),
-  parallelExecution in IntegrationTest := true,
-  testForkedParallel in IntegrationTest := true,
+  //parallelExecution in IntegrationTest := false,
+  //testForkedParallel in IntegrationTest := true,
   // The next option controls the maximum amount of parallelism allowed for IntegrationTests. It slows the suite
   // down from 90s to about 300s, but seems quite a bit more stable.
-  testGrouping in IntegrationTest := (definedTests in IntegrationTest).value.map { test =>
+  concurrentRestrictions in IntegrationTest := Seq(Tags.limitAll(java.lang.Runtime.getRuntime.availableProcessors() / 2)),
+  /*testGrouping in IntegrationTest := (definedTests in IntegrationTest).value.map { test =>
     Tests.Group(name = test.name, tests = Seq(test),
       runPolicy = SubProcess(ForkOptions((javaHome in IntegrationTest).value,
         (outputStrategy in IntegrationTest).value, Nil, Some(baseDirectory.value),
         (javaOptions in IntegrationTest).value, (connectInput in IntegrationTest).value,
         (envVars in IntegrationTest).value
       )))
-  },
+  },*/
 
   scapegoatVersion := "1.2.1"
 )

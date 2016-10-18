@@ -100,12 +100,13 @@ case class LocalMarathon(
     "hostname" -> "localhost"
   ) ++ conf
 
-  val args = config.flatMap { case (k, v) =>
-    if (v.nonEmpty) {
-      Seq(s"--$k", v)
-    } else {
-      Seq(s"--$k")
-    }
+  val args = config.flatMap {
+    case (k, v) =>
+      if (v.nonEmpty) {
+        Seq(s"--$k", v)
+      } else {
+        Seq(s"--$k")
+      }
   }(collection.breakOut)
 
   private var marathon = Option.empty[Process]

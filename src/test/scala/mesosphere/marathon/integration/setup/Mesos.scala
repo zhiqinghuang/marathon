@@ -93,7 +93,8 @@ case class MesosLocal(numSlaves: Int = 1, autoStart: Boolean = true,
   }
 
   private def create(): Process = {
-    val process = Process(s"mesos-local --ip=127.0.0.1 --port=$port --work_dir=${mesosWorkDir.getAbsolutePath}",
+    val process = Process(
+      s"mesos-local --ip=127.0.0.1 --port=$port --work_dir=${mesosWorkDir.getAbsolutePath}",
       cwd = None, mesosEnv: _*)
     if (logStdout) {
       process.run()

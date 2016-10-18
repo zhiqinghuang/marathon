@@ -3,9 +3,9 @@ package mesosphere.marathon.core.election.impl
 import akka.event.EventStream
 import mesosphere.AkkaUnitTest
 import mesosphere.marathon.MarathonConf
-import mesosphere.marathon.core.base.{RichRuntime, ShutdownHooks}
+import mesosphere.marathon.core.base.{ RichRuntime, ShutdownHooks }
 import mesosphere.marathon.metrics.Metrics
-import mesosphere.marathon.test.{ExitDisabledTest, Mockito}
+import mesosphere.marathon.test.{ ExitDisabledTest, Mockito }
 import org.rogach.scallop.ScallopOption
 
 import scala.concurrent.duration._
