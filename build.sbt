@@ -126,7 +126,7 @@ lazy val commonSettings = inConfig(IntegrationTest)(Defaults.testTasks) ++ Seq(
 
   fork in IntegrationTest := true,
   testOptions in IntegrationTest := Seq(formattingTestArg(target.value / "test-reports" / "integration"), Tests.Argument("-n", "mesosphere.marathon.IntegrationTest")),
-  concurrentRestrictions in IntegrationTest := Seq(Tags.limitAll(2)),
+  parallelExecution in Test := false,
 
   scapegoatVersion := "1.2.1"
 )
