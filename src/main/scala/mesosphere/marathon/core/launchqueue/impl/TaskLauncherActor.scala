@@ -1,5 +1,6 @@
-package mesosphere.marathon.core.launchqueue.impl
-//scalastyle:off
+package mesosphere.marathon
+package core.launchqueue.impl
+
 import akka.actor._
 import akka.event.LoggingReceive
 import mesosphere.marathon.core.base.Clock
@@ -18,10 +19,10 @@ import mesosphere.marathon.core.matcher.manager.OfferMatcherManager
 import mesosphere.marathon.core.task.tracker.InstanceTracker
 import mesosphere.marathon.state.{ RunSpec, Timestamp }
 import org.apache.mesos.{ Protos => Mesos }
+import mesosphere.marathon.stream._
 
-import scala.collection.immutable
 import scala.concurrent.duration._
-//scalastyle:on
+
 private[launchqueue] object TaskLauncherActor {
   def props(
     config: LaunchQueueConfig,
@@ -351,7 +352,7 @@ private class TaskLauncherActor(
       sender ! MatchedInstanceOps(offer.getId)
 
     case ActorOfferMatcher.MatchOffer(deadline, offer) =>
-      val reachableInstances = instanceMap.values.filterNot(_.state.condition.isLost)
+      val reachableInstances: Seq[Instance] = instanceMap.values.filterNotAs(_.state.condition.isLost)(collection.breakOut)
       val matchRequest = InstanceOpFactory.Request(runSpec, offer, reachableInstances, instancesToLaunch)
       val instanceOp: Option[InstanceOp] = instanceOpFactory.buildTaskOp(matchRequest)
       instanceOp match {
@@ -375,18 +376,34 @@ private class TaskLauncherActor(
       // yet.
       instanceOp.stateOp.possibleNewState.foreach { newState =>
         instanceMap += instanceId -> newState
+        // In case we don't receive an update a TaskOpRejected message with TASK_OP_REJECTED_TIMEOUT_REASON
+        // reason is scheduled within config.taskOpNotificationTimeout milliseconds. This will trigger another
+        // attempt to launch the task.
+        //
+        // NOTE: this can lead to a race condition where an additional task is launched: in a nutshell if a TaskOp A
+        // is rejected due to an internal timeout, TaskLauncherActor will schedule another TaskOp.Launch B, because
+        // it's under the impression that A has not succeeded/got lost. If the timeout is triggered internally, the
+        // tasksToLaunch count will be increased by 1. The TaskOp A can still be accepted though, and if it is,
+        // two tasks (A and B) might be launched instead of one (given Marathon receives sufficient offers and is
+        // able to create another TaskOp).
+        // This would lead to the app being over-provisioned (e.g. "3 of 2 tasks" launched) but eventually converge
+        // to the target task count when tasks over capacity are killed. With a sufficiently high timeout this case
+        // should be fairly rare.
+        // A better solution would involve an overhaul of the way TaskLaunchActor works and might be
+        // a subject to change in the future.
         scheduleTaskOpTimeout(instanceOp)
       }
 
       OfferMatcherRegistration.manageOfferMatcherStatus()
     }
 
+    updateActorState()
+
     log.info(
       "Request {} for instance '{}', version '{}'. {}",
       instanceOp.getClass.getSimpleName, instanceOp.instanceId.idString, runSpec.version, status)
 
-    updateActorState()
-    sender() ! MatchedInstanceOps(offer.getId, immutable.Seq(InstanceOpWithSource(myselfAsLaunchSource, instanceOp)))
+    sender() ! MatchedInstanceOps(offer.getId, Seq(InstanceOpWithSource(myselfAsLaunchSource, instanceOp)))
   }
 
   private[this] def scheduleTaskOpTimeout(instanceOp: InstanceOp): Unit = {

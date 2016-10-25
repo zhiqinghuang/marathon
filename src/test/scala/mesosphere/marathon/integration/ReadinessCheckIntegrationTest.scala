@@ -6,7 +6,7 @@ import java.util.UUID
 
 import mesosphere.AkkaIntegrationFunTest
 import mesosphere.marathon.api.v2.json.AppUpdate
-import mesosphere.marathon.core.health.{ HealthCheck, MarathonHttpHealthCheck }
+import mesosphere.marathon.core.health.{ HealthCheck, MarathonHttpHealthCheck, PortReference }
 import mesosphere.marathon.core.readiness.ReadinessCheck
 import mesosphere.marathon.integration.setup._
 import mesosphere.marathon.raml.Resources
@@ -105,9 +105,19 @@ class ReadinessCheckIntegrationTest extends AkkaIntegrationFunTest with Embedded
       portDefinitions = Seq(PortDefinition(0, name = Some("http"))),
       healthChecks =
         if (withHealth)
-          Set(MarathonHttpHealthCheck(path = Some("/ping"), portIndex = Some(0), interval = 2.seconds, timeout = 1.second))
+          Set(MarathonHttpHealthCheck(
+          path = Some("/ping"),
+          portIndex = Some(PortReference(0)),
+          interval = 2.seconds,
+          timeout = 1.second))
         else Set.empty[HealthCheck],
-      readinessChecks = Seq(ReadinessCheck("ready", portName = "http", path = "/v1/plan", interval = 2.seconds, timeout = 1.second, preserveLastResponse = true))
+      readinessChecks = Seq(ReadinessCheck(
+        "ready",
+        portName = "http",
+        path = "/v1/plan",
+        interval = 2.seconds,
+        timeout = 1.second,
+        preserveLastResponse = true))
     )
   }
 

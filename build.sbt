@@ -126,9 +126,13 @@ lazy val commonSettings = inConfig(IntegrationTest)(Defaults.testTasks) ++ Seq(
 
   fork in IntegrationTest := true,
   testOptions in IntegrationTest := Seq(formattingTestArg(target.value / "test-reports" / "integration"), Tests.Argument("-n", "mesosphere.marathon.IntegrationTest")),
-  parallelExecution in Test := false,
+  parallelExecution in IntegrationTest := false,
+  testForkedParallel in IntegrationTest := false,
 
-  scapegoatVersion := "1.2.1"
+  scapegoatVersion := "1.2.1",
+
+  coverageMinimum := 69,
+  coverageFailOnMinimum := true
 )
 
 // TODO: Move away from sbt-assembly, favoring sbt-native-packager

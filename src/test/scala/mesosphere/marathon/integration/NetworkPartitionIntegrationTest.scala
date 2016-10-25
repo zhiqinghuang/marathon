@@ -30,10 +30,6 @@ class NetworkPartitionIntegrationTest extends AkkaIntegrationFunTest with Embedd
     "scale_apps_interval" -> "5000",
     "min_revive_offers_interval" -> "100")
 
-  before {
-    cleanUp()
-  }
-
   test("Loss of ZK and Loss of Slave will not kill the task when slave comes back") {
     Given("a new app")
     val app = appProxy(testBasePath / "app", "v1", instances = 1, withHealth = false)

@@ -2,6 +2,7 @@ package mesosphere.marathon
 package integration.setup
 
 import mesosphere.AkkaIntegrationFunTest
+import mesosphere.marathon.core.health.{ MesosHttpHealthCheck, PortReference }
 import mesosphere.marathon.core.pod.{ HostNetwork, HostVolume, MesosContainer, PodDefinition }
 import mesosphere.marathon.integration.facades.MarathonFacade._
 import mesosphere.marathon.state.{ AppDefinition, Container }
@@ -105,7 +106,7 @@ class MesosAppIntegrationTest
           resources = raml.Resources(cpus = 0.1, mem = 32.0),
           endpoints = Seq(raml.Endpoint(name = "task1", hostPort = Some(0))),
           image = Some(raml.Image(raml.ImageType.Docker, "openjdk:8-jre-alpine")),
-          healthCheck = Some(raml.HealthCheck(http = Some(raml.HttpHealthCheck("task1", Some("/"))))),
+          healthCheck = Some(MesosHttpHealthCheck(portIndex = Some(PortReference("task1")), path = Some("/"))),
           volumeMounts = Seq(
             raml.VolumeMount("target", s"$containerDir/target", Some(true)),
             raml.VolumeMount("ivy2", s"$containerDir/.ivy2", Some(true)),
@@ -118,7 +119,7 @@ class MesosAppIntegrationTest
           resources = raml.Resources(cpus = 0.1, mem = 32.0),
           endpoints = Seq(raml.Endpoint(name = "task2", hostPort = Some(0))),
           image = Some(raml.Image(raml.ImageType.Docker, "openjdk:8-jre-alpine")),
-          healthCheck = Some(raml.HealthCheck(http = Some(raml.HttpHealthCheck("task2", Some("/"))))),
+          healthCheck = Some(MesosHttpHealthCheck(portIndex = Some(PortReference("task2")), path = Some("/"))),
           volumeMounts = Seq(
             raml.VolumeMount("target", s"$containerDir/target", Some(true)),
             raml.VolumeMount("ivy2", s"$containerDir/.ivy2", Some(true)),

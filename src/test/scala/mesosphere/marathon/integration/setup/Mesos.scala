@@ -147,7 +147,7 @@ case class MesosCluster(
     quorumSize: Int = 1,
     autoStart: Boolean = false,
     containerizers: Option[String] = None,
-    logStdout: Boolean = false,
+    logStdout: Boolean = true,
     waitForLeaderTimeout: Duration = 30.seconds)(implicit
   system: ActorSystem,
     mat: Materializer,
@@ -341,7 +341,7 @@ trait MesosClusterTest extends Suite with ZookeeperServerTest with MesosTest wit
   lazy val mesosLeaderTimeout: Duration = patienceConfig.timeout.toMillis.milliseconds
   lazy val mesosCluster = MesosCluster(mesosNumMasters, mesosNumSlaves, mesosMasterUrl, mesosQuorumSize,
     autoStart = false, mesosContainerizers, mesosLogStdout, mesosLeaderTimeout)
-  lazy val mesos = new MesosFacade(s"http:${mesosCluster.waitForLeader()}")
+  lazy val mesos = new MesosFacade(s"http:${mesosCluster.waitForLeader().futureValue}")
 
   abstract override def beforeAll(): Unit = {
     super.beforeAll()

@@ -13,9 +13,9 @@ class TaskLostIntegrationTest extends AkkaIntegrationFunTest with EmbeddedMarath
   override lazy val mesosNumSlaves = 2
 
   override val marathonArgs: Map[String, String] = Map(
-    "reconciliation_initial_delay" -> "5000",
-    "reconciliation_interval" -> "5000",
-    "scale_apps_initial_delay" -> "5000",
+    "reconciliation_initial_delay" -> "10000",
+    "reconciliation_interval" -> "10000",
+    "scale_apps_initial_delay" -> "1000",
     "scale_apps_interval" -> "5000",
     "min_revive_offers_interval" -> "100",
     "task_lost_expunge_gc" -> "30000",
@@ -24,11 +24,20 @@ class TaskLostIntegrationTest extends AkkaIntegrationFunTest with EmbeddedMarath
   )
 
   before {
-    cleanUp()
     mesosCluster.agents(1).stop()
     mesosCluster.masters(1).stop()
     mesosCluster.masters.head.start()
     mesosCluster.agents.head.start()
+    mesosCluster.waitForLeader().futureValue
+  }
+
+  after {
+    mesosCluster.agents(1).stop()
+    mesosCluster.masters(1).stop()
+    mesosCluster.masters.head.start()
+    mesosCluster.agents.head.start()
+    mesosCluster.waitForLeader().futureValue
+    cleanUp()
   }
 
   ignore("A task lost with mesos master failover will not kill the task - https://github.com/mesosphere/marathon/issues/4214") {
@@ -117,7 +126,7 @@ class TaskLostIntegrationTest extends AkkaIntegrationFunTest with EmbeddedMarath
 
     When("We try to scale down to one instance")
     marathon.updateApp(app.id, AppUpdate(instances = Some(1)))
-    marathon.listDeploymentsForBaseGroup().value should have size 1
+    waitForEventMatching("deployment to scale down should be triggered") { matchDeploymentStart(app.id.toString) }
 
     Then("the deployment will eventually finish")
     waitForEventMatching("app should be scaled and deployment should be finished") { matchDeploymentSuccess(1, app.id.toString) }
@@ -158,9 +167,6 @@ class TaskLostIntegrationTest extends AkkaIntegrationFunTest with EmbeddedMarath
     waitForEventMatching("Task is declared lost") { matchEvent("TASK_LOST", task) }
 
     Then("The task is killed due to GC timeout and a replacement is started")
-    // this is no longer applicable
-    //val marathonName = ProcessKeeper.processNames.find(_.startsWith("marathon")).getOrElse(fail("no Marathon process found"))
-
     val replacement = waitForTasks(app.id, 1).head
     replacement should not be task
   }
@@ -170,10 +176,18 @@ class TaskLostIntegrationTest extends AkkaIntegrationFunTest with EmbeddedMarath
       event.info.get("taskId").contains(task.id)
   }
 
-  def matchDeploymentSuccess(instanceCount: Int, appId: String): CallbackEvent => Boolean = { event =>
+  private def matchDeploymentSuccess(instanceCount: Int, appId: String): CallbackEvent => Boolean = { event =>
     val infoString = event.info.toString()
-    event.eventType == "deployment_success" && infoString.contains(s"instances -> $instanceCount") &&
-      infoString.contains(s"List(Map(actions -> List(Map(action -> ScaleApplication, app -> $appId)))))")
+    event.eventType == "deployment_success" && infoString.contains(s"instances -> $instanceCount") && matchScaleApplication(infoString, appId)
+  }
+
+  private def matchDeploymentStart(appId: String): CallbackEvent => Boolean = { event =>
+    val infoString = event.info.toString()
+    event.eventType == "deployment_info" && matchScaleApplication(infoString, appId)
+  }
+
+  private def matchScaleApplication(infoString: String, appId: String): Boolean = {
+    infoString.contains(s"List(Map(actions -> List(Map(action -> ScaleApplication, app -> $appId)))))")
   }
 
 }

@@ -8,6 +8,7 @@ import mesosphere.marathon.stream._
 import org.openjdk.jmh.annotations.{Benchmark, BenchmarkMode, Fork, Mode, OutputTimeUnit}
 import org.openjdk.jmh.infra.Blackhole
 
+import scala.collection.immutable.Seq
 import scala.collection.JavaConverters._
 
 

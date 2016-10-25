@@ -1,11 +1,12 @@
-package mesosphere.marathon.upgrade
+package mesosphere.marathon
+package upgrade
 
 import akka.actor.{ Actor, Props }
 import akka.testkit.TestActorRef
 import mesosphere.marathon.TaskUpgradeCanceledException
 import mesosphere.marathon.core.condition.Condition
 import mesosphere.marathon.core.event._
-import mesosphere.marathon.core.health.MarathonHttpHealthCheck
+import mesosphere.marathon.core.health.{ MarathonHttpHealthCheck, PortReference }
 import mesosphere.marathon.core.condition.Condition.Running
 import mesosphere.marathon.core.instance.{ Instance, TestInstanceBuilder }
 import mesosphere.marathon.core.launchqueue.LaunchQueue
@@ -40,7 +41,7 @@ class TaskReplaceActorTest
     val instanceA = f.runningInstance(app)
     val instanceB = f.runningInstance(app)
 
-    when(f.tracker.specInstancesLaunchedSync(app.id)).thenReturn(Iterable(instanceA, instanceB))
+    when(f.tracker.specInstancesLaunchedSync(app.id)).thenReturn(Seq(instanceA, instanceB))
 
     val promise = Promise[Unit]()
     val ref = f.replaceActor(app, promise)
@@ -62,13 +63,13 @@ class TaskReplaceActorTest
     val app = AppDefinition(
       id = "/myApp".toPath,
       instances = 5,
-      healthChecks = Set(MarathonHttpHealthCheck(portIndex = Some(0))),
+      healthChecks = Set(MarathonHttpHealthCheck(portIndex = Some(PortReference(0)))),
       upgradeStrategy = UpgradeStrategy(0.0))
 
     val instanceA = f.runningInstance(app)
     val instanceB = f.runningInstance(app)
 
-    when(f.tracker.specInstancesLaunchedSync(app.id)).thenReturn(Iterable(instanceA, instanceB))
+    when(f.tracker.specInstancesLaunchedSync(app.id)).thenReturn(Seq(instanceA, instanceB))
 
     val promise = Promise[Unit]()
     val ref = f.replaceActor(app, promise)
@@ -92,7 +93,7 @@ class TaskReplaceActorTest
     val instanceB = f.runningInstance(app)
     val instanceC = f.runningInstance(app)
 
-    when(f.tracker.specInstancesLaunchedSync(app.id)).thenReturn(Iterable(instanceA, instanceB, instanceC))
+    when(f.tracker.specInstancesLaunchedSync(app.id)).thenReturn(Seq(instanceA, instanceB, instanceC))
 
     val promise = Promise[Unit]()
     val ref = f.replaceActor(app, promise)
@@ -119,7 +120,7 @@ class TaskReplaceActorTest
     val app = AppDefinition(
       id = "/myApp".toPath,
       instances = 3,
-      healthChecks = Set(MarathonHttpHealthCheck(portIndex = Some(0))),
+      healthChecks = Set(MarathonHttpHealthCheck(portIndex = Some(PortReference(0)))),
       upgradeStrategy = UpgradeStrategy(0.5)
     )
 
@@ -127,7 +128,7 @@ class TaskReplaceActorTest
     val instanceB = f.runningInstance(app)
     val instanceC = f.runningInstance(app)
 
-    when(f.tracker.specInstancesLaunchedSync(app.id)).thenReturn(Iterable(instanceA, instanceB, instanceC))
+    when(f.tracker.specInstancesLaunchedSync(app.id)).thenReturn(Seq(instanceA, instanceB, instanceC))
 
     val promise = Promise[Unit]()
 
@@ -167,7 +168,7 @@ class TaskReplaceActorTest
     val app = AppDefinition(
       id = "/myApp".toPath,
       instances = 3,
-      healthChecks = Set(MarathonHttpHealthCheck(portIndex = Some(0))),
+      healthChecks = Set(MarathonHttpHealthCheck(portIndex = Some(PortReference(0)))),
       upgradeStrategy = UpgradeStrategy(0.5, 0.0)
     )
 
@@ -175,7 +176,7 @@ class TaskReplaceActorTest
     val instanceB = f.runningInstance(app)
     val instanceC = f.runningInstance(app)
 
-    when(f.tracker.specInstancesLaunchedSync(app.id)).thenReturn(Iterable(instanceA, instanceB, instanceC))
+    when(f.tracker.specInstancesLaunchedSync(app.id)).thenReturn(Seq(instanceA, instanceB, instanceC))
 
     val promise = Promise[Unit]()
 
@@ -219,7 +220,7 @@ class TaskReplaceActorTest
     val app = AppDefinition(
       id = "/myApp".toPath,
       instances = 3,
-      healthChecks = Set(MarathonHttpHealthCheck(portIndex = Some(0))),
+      healthChecks = Set(MarathonHttpHealthCheck(portIndex = Some(PortReference(0)))),
       upgradeStrategy = UpgradeStrategy(1.0, 0.0) // 1 task over-capacity is ok
     )
 
@@ -227,7 +228,7 @@ class TaskReplaceActorTest
     val instanceB = f.runningInstance(app)
     val instanceC = f.runningInstance(app)
 
-    when(f.tracker.specInstancesLaunchedSync(app.id)).thenReturn(Iterable(instanceA, instanceB, instanceC))
+    when(f.tracker.specInstancesLaunchedSync(app.id)).thenReturn(Seq(instanceA, instanceB, instanceC))
 
     val promise = Promise[Unit]()
 
@@ -269,7 +270,7 @@ class TaskReplaceActorTest
     val app = AppDefinition(
       id = "/myApp".toPath,
       instances = 3,
-      healthChecks = Set(MarathonHttpHealthCheck(portIndex = Some(0))),
+      healthChecks = Set(MarathonHttpHealthCheck(portIndex = Some(PortReference(0)))),
       upgradeStrategy = UpgradeStrategy(1.0, 0.7)
     )
 
@@ -277,7 +278,7 @@ class TaskReplaceActorTest
     val instanceB = f.runningInstance(app)
     val instanceC = f.runningInstance(app)
 
-    when(f.tracker.specInstancesLaunchedSync(app.id)).thenReturn(Iterable(instanceA, instanceB, instanceC))
+    when(f.tracker.specInstancesLaunchedSync(app.id)).thenReturn(Seq(instanceA, instanceB, instanceC))
 
     val promise = Promise[Unit]()
 
@@ -319,7 +320,7 @@ class TaskReplaceActorTest
     val app = AppDefinition(
       id = "/myApp".toPath,
       instances = 3,
-      healthChecks = Set(MarathonHttpHealthCheck(portIndex = Some(0))),
+      healthChecks = Set(MarathonHttpHealthCheck(portIndex = Some(PortReference(0)))),
       upgradeStrategy = UpgradeStrategy(minimumHealthCapacity = 1.0, maximumOverCapacity = 0.3)
     )
 
@@ -328,7 +329,7 @@ class TaskReplaceActorTest
     val instanceC = f.runningInstance(app)
     val instanceD = f.runningInstance(app)
 
-    when(f.tracker.specInstancesLaunchedSync(app.id)).thenReturn(Iterable(instanceA, instanceB, instanceC, instanceD))
+    when(f.tracker.specInstancesLaunchedSync(app.id)).thenReturn(Seq(instanceA, instanceB, instanceC, instanceD))
 
     val promise = Promise[Unit]()
 
@@ -374,14 +375,14 @@ class TaskReplaceActorTest
     val instanceA = f.runningInstance(app)
     val instanceB = f.runningInstance(app)
 
-    when(f.tracker.specInstancesLaunchedSync(app.id)).thenReturn(Iterable(instanceA, instanceB))
+    when(f.tracker.specInstancesLaunchedSync(app.id)).thenReturn(Seq(instanceA, instanceB))
 
     val promise = Promise[Unit]()
 
     val ref = f.replaceActor(app, promise)
     watch(ref)
 
-    system.stop(ref)
+    ref ! DeploymentActor.Shutdown
 
     intercept[TaskUpgradeCanceledException] {
       Await.result(promise.future, 5.seconds)
@@ -396,7 +397,7 @@ class TaskReplaceActorTest
     val instanceA = f.runningInstance(app)
     val instanceB = f.runningInstance(app)
 
-    when(f.tracker.specInstancesLaunchedSync(app.id)).thenReturn(Iterable(instanceA, instanceB))
+    when(f.tracker.specInstancesLaunchedSync(app.id)).thenReturn(Seq(instanceA, instanceB))
 
     val promise = Promise[Unit]()
 
@@ -426,7 +427,7 @@ class TaskReplaceActorTest
 
     val instance = f.runningInstance(app)
 
-    when(f.tracker.specInstancesLaunchedSync(app.id)).thenReturn(Iterable(instance))
+    when(f.tracker.specInstancesLaunchedSync(app.id)).thenReturn(Seq(instance))
 
     val promise = Promise[Unit]()
 

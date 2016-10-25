@@ -17,7 +17,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
 import com.typesafe.scalalogging.StrictLogging
-import mesosphere.marathon.core.health.{ HealthCheck, MarathonHttpHealthCheck }
+import mesosphere.marathon.core.health.{ HealthCheck, MarathonHttpHealthCheck, PortReference }
 import mesosphere.marathon.integration.facades.{ ITDeploymentResult, ITEnrichedTask, MarathonFacade, MesosFacade }
 import mesosphere.marathon.raml.{ PodState, PodStatus, Resources }
 import mesosphere.marathon.state.{ AppDefinition, Container, DockerVolume, PathId }
@@ -275,7 +275,8 @@ trait MarathonTest extends Suite with StrictLogging with ScalaFutures with Befor
   }
 
   lazy val appProxyHealthChecks = Set(
-    MarathonHttpHealthCheck(gracePeriod = 3.second, interval = 1.second, maxConsecutiveFailures = 2))
+    MarathonHttpHealthCheck(gracePeriod = 3.second, interval = 1.second, maxConsecutiveFailures = 2,
+      portIndex = Some(PortReference.ByIndex(0))))
 
   def appProxy(appId: PathId, versionId: String, instances: Int,
     withHealth: Boolean = true, dependencies: Set[PathId] = Set.empty): AppDefinition = {
@@ -294,7 +295,7 @@ trait MarathonTest extends Suite with StrictLogging with ScalaFutures with Befor
       file.getAbsolutePath
     }
     val cmd = Some(s"""echo APP PROXY $$MESOS_TASK_ID RUNNING; $appProxyMainInvocation """ +
-      s"""$appId $versionId http://127.0.0.1:${callbackEndpoint.localAddress.getPort}/health$appId/$versionId""")
+      s"""$$PORT0 $appId $versionId http://127.0.0.1:${callbackEndpoint.localAddress.getPort}/health$appId/$versionId""")
 
     AppDefinition(
       id = appId,
@@ -363,9 +364,9 @@ trait MarathonTest extends Suite with StrictLogging with ScalaFutures with Befor
     logger.info("Starting to CLEAN UP !!!!!!!!!!")
     events.clear()
 
-    val deleteResult: RestResult[ITDeploymentResult] = marathon.deleteGroup(testBasePath, force = true)
-    if (deleteResult.code != 404) {
-      waitForChange(deleteResult)
+    def deleteResult(): RestResult[ITDeploymentResult] = marathon.deleteGroup(testBasePath, force = true)
+    if (deleteResult().code != 404) {
+      waitForChange(deleteResult())
     }
 
     WaitTestSupport.waitUntil("clean slate in Mesos", patienceConfig.timeout.toMillis.millis) {
@@ -413,6 +414,7 @@ trait MarathonTest extends Suite with StrictLogging with ScalaFutures with Befor
   }
 
   def waitForStatusUpdates(kinds: String*) = kinds.foreach { kind =>
+    logger.info(s"Wait for status update event with kind: $kind")
     waitForEventWith("status_update_event", _.taskStatus == kind)
   }
 
@@ -435,7 +437,12 @@ trait MarathonTest extends Suite with StrictLogging with ScalaFutures with Befor
     @tailrec
     def nextEvent: Option[CallbackEvent] = if (events.isEmpty) None else {
       val event = events.poll()
-      if (fn(event)) Some(event) else nextEvent
+      if (fn(event)) {
+        Some(event)
+      } else {
+        logger.info(s"Event $event did not match criteria skipping to next event")
+        nextEvent
+      }
     }
     WaitTestSupport.waitFor(description, maxWait)(nextEvent)
   }
