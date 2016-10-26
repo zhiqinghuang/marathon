@@ -176,6 +176,19 @@ class MarathonFacade(url: String, baseGroup: PathId, waitTime: Duration = 30.sec
 
   //pod resource ---------------------------------------------
 
+  def listPodsInBaseGroup: RestResult[Seq[PodDefinition]] = {
+    val pipeline = marathonSendReceive ~> read[Seq[Pod]]
+    val res = result(pipeline(Get(s"$url/v2/pods")), waitTime)
+    res.map(_.map(Raml.fromRaml(_))).map(_.filter(pod => isInBaseGroup(pod.id)))
+  }
+
+  def pod(id: PathId): RestResult[PodDefinition] = {
+    requireInBaseGroup(id)
+    val pipeline = marathonSendReceive ~> read[Pod]
+    val res = result(pipeline(Get(s"$url/v2/pods$id")), waitTime)
+    res.map(Raml.fromRaml(_))
+  }
+
   def createPodV2(pod: PodDefinition): RestResult[PodDefinition] = {
     requireInBaseGroup(pod.id)
     val pipeline = marathonSendReceive ~> read[Pod]
@@ -200,6 +213,19 @@ class MarathonFacade(url: String, baseGroup: PathId, waitTime: Duration = 30.sec
     requireInBaseGroup(podId)
     val pipeline = marathonSendReceive ~> read[PodStatus]
     result(pipeline(Get(s"$url/v2/pods$podId::status")), waitTime)
+  }
+
+  def listPodVersions(podId: PathId): RestResult[Seq[Timestamp]] = {
+    requireInBaseGroup(podId)
+    val pipeline = marathonSendReceive ~> read[Seq[Timestamp]]
+    result(pipeline(Get(s"$url/v2/pods$podId::versions")), waitTime)
+  }
+
+  def podVersion(podId: PathId, version: Timestamp): RestResult[PodDefinition] = {
+    requireInBaseGroup(podId)
+    val pipeline = marathonSendReceive ~> read[Pod]
+    val res = result(pipeline(Get(s"$url/v2/pods$podId::versions/$version")), waitTime)
+    res.map(Raml.fromRaml(_))
   }
 
   //apps tasks resource --------------------------------------
