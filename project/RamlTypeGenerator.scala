@@ -59,7 +59,7 @@ object RamlTypeGenerator {
 
   def camelify(name: String): String = name.toLowerCase.capitalize
 
-  def underscoreToCamel(name: String) = "(_|\\,)([a-z\\d])".r.replaceAllIn(name, { m =>
+  def underscoreToCamel(name: String) = "(/|_|\\,)([a-z\\d])".r.replaceAllIn(name, { m =>
     m.group(2).toUpperCase()
   })
 

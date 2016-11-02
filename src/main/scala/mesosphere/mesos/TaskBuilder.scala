@@ -6,6 +6,7 @@ import mesosphere.marathon.api.serialization.{ ContainerSerializer, PortDefiniti
 import mesosphere.marathon.core.condition.Condition
 import mesosphere.marathon.core.health.MesosHealthCheck
 import mesosphere.marathon.core.instance.Instance
+import mesosphere.marathon.core.pod.{ BridgeNetwork, ContainerNetwork }
 import mesosphere.marathon.core.task.Task
 import mesosphere.marathon.plugin.task.RunSpecTaskProcessor
 import mesosphere.marathon.state._
@@ -23,7 +24,7 @@ class TaskBuilder(
     config: MarathonConf,
     runSpecTaskProc: RunSpecTaskProcessor = RunSpecTaskProcessor.empty) {
 
-  import TaskBuilder.log
+  import TaskBuilder.{ MesosBridgeName, log }
 
   //TODO(REJECTED): remove this method
   def build(
@@ -186,10 +187,9 @@ class TaskBuilder(
     discoveryInfoBuilder.setName(runSpec.id.toHostname)
     discoveryInfoBuilder.setVisibility(org.apache.mesos.Protos.DiscoveryInfo.Visibility.FRAMEWORK)
 
-    val portProtos = runSpec.ipAddress match {
-      case Some(IpAddress(_, _, DiscoveryInfo(ports), _)) if ports.nonEmpty => ports.map(_.toProto)
-      case _ =>
-        runSpec.container.withFilter(_.portMappings.nonEmpty).map { c =>
+    val portProtos =
+      if (runSpec.usesNonHostNetworking) {
+        runSpec.container.map { c =>
           // The run spec uses bridge and user modes with portMappings, use them to create the Port messages
           c.portMappings.zip(hostPorts).collect {
             case (portMapping, None) =>
@@ -201,15 +201,15 @@ class TaskBuilder(
               val updatedPortMapping = portMapping.copy(labels = portMapping.labels + ("network-scope" -> "host"))
               PortMappingSerializer.toMesosPort(updatedPortMapping, hostPort)
           }
-        }.getOrElse(
-          // Serialize runSpec.portDefinitions to protos. The port numbers are the service ports, we need to
-          // overwrite them the port numbers assigned to this particular task.
-          runSpec.portDefinitions.zip(hostPorts).collect {
+        }.getOrElse(Nil)
+      } else {
+        // Serialize runSpec.portDefinitions to protos. The port numbers are the service ports, we need to
+        // overwrite them the port numbers assigned to this particular task.
+        runSpec.portDefinitions.zip(hostPorts).collect {
           case (portDefinition, Some(hostPort)) =>
             PortDefinitionSerializer.toMesosProto(portDefinition).map(_.toBuilder.setNumber(hostPort).build)
         }.flatten
-        )
-    }
+      }
 
     val portsProto = org.apache.mesos.Protos.Ports.newBuilder
     portsProto.addAllPorts(portProtos)
@@ -219,7 +219,7 @@ class TaskBuilder(
   }
 
   protected def computeContainerInfo(hostPorts: Seq[Option[Int]]): Option[ContainerInfo] = {
-    if (runSpec.container.isEmpty && runSpec.ipAddress.isEmpty) {
+    if (runSpec.container.isEmpty && !runSpec.usesNonHostNetworking) {
       None
     } else {
       val builder = ContainerInfo.newBuilder
@@ -257,16 +257,23 @@ class TaskBuilder(
       }
 
       // Set NetworkInfo if necessary
-      runSpec.ipAddress.foreach { ipAddress =>
-        val ipAddressLabels = Labels.newBuilder().addAllLabels(ipAddress.labels.map {
+      runSpec.networks.foreach { network =>
+        def generateLabels(from: Map[String,String]): Labels = Labels.newBuilder().addAllLabels(from.map {
           case (key, value) => Label.newBuilder.setKey(key).setValue(value).build()
-        })
+        }).build()
+
+        val (networkName, networkLabels) = network match {
+          case cnet: ContainerNetwork => cnet.name -> generateLabels(cnet.labels)
+          case bnet: BridgeNetwork => MesosBridgeName -> generateLabels(bnet.labels)
+          case unsupported => throw new IllegalStateException(s"unsupported networking mode ${unsupported}")
+        }
+
         val networkInfo: NetworkInfo.Builder =
           NetworkInfo.newBuilder()
-            .addAllGroups(ipAddress.groups)
-            .setLabels(ipAddressLabels)
             .addIpAddresses(NetworkInfo.IPAddress.getDefaultInstance)
-        ipAddress.networkName.foreach(networkInfo.setName)
+            .setLabels(networkLabels)
+            .setName(networkName)
+
         builder.addNetworkInfos(networkInfo)
       }
 
@@ -309,6 +316,8 @@ class TaskBuilder(
 object TaskBuilder {
 
   val log = LoggerFactory.getLogger(getClass)
+
+  val MesosBridgeName = "mesos-bridge"
 
   def commandInfo(
     runSpec: AppDefinition,
