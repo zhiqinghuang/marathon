@@ -233,7 +233,7 @@ class JavaUrlConnectionRequestForwarder @Inject() (
       copyRequestBodyToConnection(leaderConnection, request)
     }
 
-    def cloneResponseStatusAndHeader(remote: HttpURLConnection, response: HttpServletResponse): Try[Done] = {
+    def cloneResponseStatusAndHeader(remote: HttpURLConnection, response: HttpServletResponse): Try[Done] = Try {
       val status = remote.getResponseCode
       response.setStatus(status)
 
@@ -250,7 +250,7 @@ class JavaUrlConnectionRequestForwarder @Inject() (
             }
         }
       }
-      Success(Done)
+      Done
     }
 
     def copyConnectionResponse(leaderConnection: HttpURLConnection, response: HttpServletResponse): Unit = {
