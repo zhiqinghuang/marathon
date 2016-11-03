@@ -17,7 +17,6 @@ import mesosphere.mesos.protos.OfferID
 import org.apache.mesos.Protos.TaskInfo
 import org.apache.mesos.{ Protos, SchedulerDriver }
 import org.mockito.Mockito
-import org.mockito.Mockito.{ verify, when }
 
 class TaskLauncherImplTest extends MarathonSpec {
   private[this] val offerId = OfferID("offerId")
@@ -43,8 +42,7 @@ class TaskLauncherImplTest extends MarathonSpec {
   }
 
   test("unsuccessful launchTasks") {
-    when(driverHolder.driver.get.acceptOffers(offerIdAsJava, opsAsJava, filter))
-      .thenReturn(Protos.Status.DRIVER_ABORTED)
+    driverHolder.driver.get.acceptOffers(offerIdAsJava, opsAsJava, filter) returns Protos.Status.DRIVER_ABORTED
 
     assert(!launcher.acceptOffer(offerId, ops))
 
@@ -52,8 +50,7 @@ class TaskLauncherImplTest extends MarathonSpec {
   }
 
   test("successful launchTasks") {
-    when(driverHolder.driver.get.acceptOffers(offerIdAsJava, opsAsJava, filter))
-      .thenReturn(Protos.Status.DRIVER_RUNNING)
+    driverHolder.driver.get.acceptOffers(offerIdAsJava, opsAsJava, filter) returns Protos.Status.DRIVER_RUNNING
 
     assert(launcher.acceptOffer(offerId, ops))
 

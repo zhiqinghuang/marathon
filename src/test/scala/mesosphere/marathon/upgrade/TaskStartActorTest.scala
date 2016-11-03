@@ -1,4 +1,5 @@
-package mesosphere.marathon.upgrade
+package mesosphere.marathon
+package upgrade
 
 import akka.testkit.{ TestActorRef, TestProbe }
 import com.codahale.metrics.MetricRegistry
@@ -17,12 +18,11 @@ import mesosphere.marathon.metrics.Metrics
 import mesosphere.marathon.state.PathId._
 import mesosphere.marathon.state.{ AppDefinition, Command, Timestamp }
 import mesosphere.marathon.storage.repository.legacy.store.InMemoryStore
-import mesosphere.marathon.test.{ MarathonActorSupport, MarathonTestHelper, Mockito }
+import mesosphere.marathon.test.{ MarathonActorSupport, MarathonTestHelper }
 import mesosphere.marathon.{ SchedulerActions, TaskUpgradeCanceledException }
 import org.apache.mesos.SchedulerDriver
-import org.mockito.Mockito.{ spy, when }
 import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.{ BeforeAndAfter, FunSuiteLike, Matchers }
+import org.scalatest.FunSuiteLike
 
 import scala.concurrent.duration._
 import scala.concurrent.{ Await, Promise }
@@ -30,10 +30,7 @@ import scala.concurrent.{ Await, Promise }
 class TaskStartActorTest
     extends MarathonActorSupport
     with FunSuiteLike
-    with Matchers
-    with Mockito
-    with ScalaFutures
-    with BeforeAndAfter {
+    with ScalaFutures {
 
   for (
     (counts, description) <- Seq(
@@ -46,7 +43,7 @@ class TaskStartActorTest
       val promise = Promise[Unit]()
       val app = AppDefinition("/myApp".toPath, instances = 5)
 
-      when(f.launchQueue.get(app.id)).thenReturn(counts)
+      f.launchQueue.get(app.id) returns counts
       val ref = f.startActor(app, app.instances, promise)
       watch(ref)
 
@@ -67,7 +64,7 @@ class TaskStartActorTest
     val promise = Promise[Unit]()
     val app = AppDefinition("/myApp".toPath, instances = 5)
 
-    when(f.launchQueue.get(app.id)).thenReturn(counts)
+    f.launchQueue.get(app.id) returns counts
 
     val ref = f.startActor(app, app.instances, promise)
     watch(ref)
@@ -87,7 +84,7 @@ class TaskStartActorTest
     val promise = Promise[Unit]()
     val app = AppDefinition("/myApp".toPath, instances = 5)
 
-    when(f.launchQueue.get(app.id)).thenReturn(None)
+    f.launchQueue.get(app.id) returns None
     val instance = TestInstanceBuilder.newBuilder(app.id, version = Timestamp(1024)).addTaskStarting().getInstance()
     f.taskCreationHandler.created(InstanceUpdateOperation.LaunchEphemeral(instance)).futureValue
 
@@ -108,7 +105,7 @@ class TaskStartActorTest
     val f = new Fixture
     val promise = Promise[Unit]()
     val app = AppDefinition("/myApp".toPath, instances = 0)
-    when(f.launchQueue.get(app.id)).thenReturn(None)
+    f.launchQueue.get(app.id) returns None
 
     val ref = f.startActor(app, app.instances, promise)
     watch(ref)
@@ -126,7 +123,7 @@ class TaskStartActorTest
       instances = 5,
       healthChecks = Set(MesosCommandHealthCheck(command = Command("true")))
     )
-    when(f.launchQueue.get(app.id)).thenReturn(None)
+    f.launchQueue.get(app.id) returns None
 
     val ref = f.startActor(app, app.instances, promise)
     watch(ref)
@@ -149,7 +146,7 @@ class TaskStartActorTest
       instances = 0,
       healthChecks = Set(MesosCommandHealthCheck(command = Command("true")))
     )
-    when(f.launchQueue.get(app.id)).thenReturn(None)
+    f.launchQueue.get(app.id) returns None
 
     val ref = f.startActor(app, app.instances, promise)
     watch(ref)
@@ -163,7 +160,7 @@ class TaskStartActorTest
     val f = new Fixture
     val promise = Promise[Unit]()
     val app = AppDefinition("/myApp".toPath, instances = 5)
-    when(f.launchQueue.get(app.id)).thenReturn(None)
+    f.launchQueue.get(app.id) returns None
 
     val ref = f.startActor(app, app.instances, promise)
     watch(ref)
@@ -182,7 +179,7 @@ class TaskStartActorTest
     val promise = Promise[Unit]()
     val app = AppDefinition("/myApp".toPath, instances = 1)
 
-    when(f.launchQueue.get(app.id)).thenReturn(None)
+    f.launchQueue.get(app.id) returns None
     val ref = f.startActor(app, app.instances, promise)
     watch(ref)
 
@@ -204,7 +201,7 @@ class TaskStartActorTest
     val f = new Fixture
     val promise = Promise[Unit]()
     val app = AppDefinition("/myApp".toPath, instances = 5)
-    when(f.launchQueue.get(app.id)).thenReturn(None)
+    f.launchQueue.get(app.id) returns None
 
     val outdatedInstance = TestInstanceBuilder.newBuilder(app.id, version = Timestamp(1024)).addTaskStaged().getInstance()
     val instanceId = outdatedInstance.instanceId
@@ -221,8 +218,8 @@ class TaskStartActorTest
     reset(f.launchQueue)
 
     // let existing task die
-    when(f.taskTracker.countLaunchedSpecInstancesSync(app.id)).thenReturn(0)
-    when(f.launchQueue.get(app.id)).thenReturn(Some(LaunchQueueTestHelper.zeroCounts.copy(instancesLeftToLaunch = 4, finalInstanceCount = 4)))
+    f.taskTracker.countLaunchedSpecInstancesSync(app.id) returns 0
+    f.launchQueue.get(app.id) returns Some(LaunchQueueTestHelper.zeroCounts.copy(instancesLeftToLaunch = 4, finalInstanceCount = 4))
     // The version does not match the app.version so that it is filtered in StartingBehavior.
     // does that make sense?
     system.eventStream.publish(f.instanceChange(app, instanceId, Condition.Error).copy(runSpecVersion = outdatedInstance.tasks.head.runSpecVersion))
@@ -236,8 +233,8 @@ class TaskStartActorTest
     reset(f.launchQueue)
 
     // launch 4 of the tasks
-    when(f.launchQueue.get(app.id)).thenReturn(Some(LaunchQueueTestHelper.zeroCounts.copy(instancesLeftToLaunch = app.instances, finalInstanceCount = 4)))
-    when(f.taskTracker.countLaunchedSpecInstancesSync(app.id)).thenReturn(4)
+    f.launchQueue.get(app.id) returns Some(LaunchQueueTestHelper.zeroCounts.copy(instancesLeftToLaunch = app.instances, finalInstanceCount = 4))
+    f.taskTracker.countLaunchedSpecInstancesSync(app.id) returns 4
     List(0, 1, 2, 3) foreach { i =>
       system.eventStream.publish(f.instanceChange(app, Instance.Id(s"task-$i"), Running))
     }

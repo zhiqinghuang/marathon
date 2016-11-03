@@ -1,4 +1,5 @@
-package mesosphere.marathon.core.history.impl
+package mesosphere.marathon
+package core.history.impl
 
 import akka.actor.{ ActorRef, Props }
 import akka.testkit.{ ImplicitSender, TestActorRef }
@@ -7,21 +8,11 @@ import mesosphere.marathon.core.task.Task
 import mesosphere.marathon.state.PathId._
 import mesosphere.marathon.state.{ TaskFailure, Timestamp }
 import mesosphere.marathon.storage.repository.TaskFailureRepository
-import mesosphere.marathon.test.{ MarathonActorSupport, MarathonSpec }
+import mesosphere.marathon.test.MarathonActorSupport
 import org.apache.mesos.Protos.{ NetworkInfo, TaskState }
-import org.mockito.Matchers.any
-import org.mockito.Mockito._
-import org.scalatest.mockito.MockitoSugar
-import org.scalatest.{ BeforeAndAfter, Matchers }
-
-import scala.collection.immutable.Seq
 
 class HistoryActorTest
     extends MarathonActorSupport
-    with MarathonSpec
-    with MockitoSugar
-    with BeforeAndAfter
-    with Matchers
     with ImplicitSender {
   import org.apache.mesos.Protos.TaskState._
 
@@ -60,28 +51,28 @@ class HistoryActorTest
     val message = statusMessage(TASK_RUNNING)
     historyActor ! message
 
-    verify(failureRepo, times(0)).store(any())
+    verify(failureRepo, times(0)).store(any)
   }
 
   test("Ignore TASK_FINISHED") {
     val message = statusMessage(TASK_FINISHED)
     historyActor ! message
 
-    verify(failureRepo, times(0)).store(any())
+    verify(failureRepo, times(0)).store(any)
   }
 
   test("Ignore TASK_KILLED") {
     val message = statusMessage(TASK_KILLED)
     historyActor ! message
 
-    verify(failureRepo, times(0)).store(any())
+    verify(failureRepo, times(0)).store(any)
   }
 
   test("Ignore TASK_STAGING") {
     val message = statusMessage(TASK_STAGING)
     historyActor ! message
 
-    verify(failureRepo, times(0)).store(any())
+    verify(failureRepo, times(0)).store(any)
   }
 
   test("Store UnhealthyTaskKilled") {

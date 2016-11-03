@@ -1,4 +1,5 @@
-package mesosphere.marathon.test
+package mesosphere.marathon
+package test
 
 import org.mockito.invocation.InvocationOnMock
 import org.mockito.stubbing.{ Answer, OngoingStubbing }
@@ -24,6 +25,7 @@ trait Mockito extends MockitoSugar {
   def atLeast(num: Int) = M.atLeast(num)
   def atMost(num: Int) = M.atMost(num)
   def never = M.never()
+  def spy[T](t: T) = M.spy(t)
 
   def inOrder(mocks: AnyRef*) = M.inOrder(mocks: _*)
 

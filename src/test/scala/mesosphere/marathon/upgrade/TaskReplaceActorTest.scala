@@ -20,8 +20,7 @@ import org.apache.mesos.SchedulerDriver
 import org.mockito.Mockito
 import org.mockito.Mockito._
 import org.scalatest.concurrent.Eventually
-import org.scalatest.mockito.MockitoSugar
-import org.scalatest.{ BeforeAndAfter, FunSuiteLike, Matchers }
+import org.scalatest.{ BeforeAndAfter, FunSuiteLike }
 
 import scala.collection.immutable.Seq
 import scala.concurrent.duration._
@@ -30,10 +29,8 @@ import scala.concurrent.{ Await, Promise }
 class TaskReplaceActorTest
     extends MarathonActorSupport
     with FunSuiteLike
-    with Matchers
     with Eventually
-    with BeforeAndAfter
-    with MockitoSugar {
+    with BeforeAndAfter {
 
   test("Replace without health checks") {
     val f = new Fixture
@@ -253,7 +250,7 @@ class TaskReplaceActorTest
     // third new task becomes healthy and last old task is killed
     ref ! f.healthChanged(app, healthy = true)
     eventually { f.killService.numKilled should be(3) }
-    queueOrder.verify(f.queue, never()).add(_: AppDefinition, 1)
+    queueOrder.verify(f.queue, never).add(_: AppDefinition, 1)
 
     Await.result(promise.future, 5.seconds)
 
@@ -298,12 +295,12 @@ class TaskReplaceActorTest
     // second new task becomes healthy and another old task is killed
     ref ! f.healthChanged(app, healthy = true)
     eventually { f.killService.numKilled should be(2) }
-    queueOrder.verify(f.queue, never()).add(_: AppDefinition, 1)
+    queueOrder.verify(f.queue, never).add(_: AppDefinition, 1)
 
     // third new task becomes healthy and last old task is killed
     ref ! f.healthChanged(app, healthy = true)
     eventually { f.killService.numKilled should be(3) }
-    queueOrder.verify(f.queue, never()).add(_: AppDefinition, 1)
+    queueOrder.verify(f.queue, never).add(_: AppDefinition, 1)
 
     Await.result(promise.future, 5.seconds)
 
@@ -357,7 +354,7 @@ class TaskReplaceActorTest
     // third new task becomes healthy and last old task is killed
     ref ! f.healthChanged(app, healthy = true)
     eventually { f.killService.numKilled should be(4) }
-    eventually { order.verify(f.queue, never()).add(app, 1) }
+    eventually { order.verify(f.queue, never).add(app, 1) }
 
     Await.result(promise.future, 5.seconds)
 

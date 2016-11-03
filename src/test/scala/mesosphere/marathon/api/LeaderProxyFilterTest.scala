@@ -93,8 +93,8 @@ class LeaderProxyFilterTest extends MarathonSpec {
     // we pass that request down the chain
     verify(electionService, times(1)).isLeader
     verify(electionService, times(1)).leaderHostPort
-    verify(request, atLeastOnce()).getRequestURI
-    verify(request, atLeastOnce()).getQueryString
+    verify(request, atLeastOnce).getRequestURI
+    verify(request, atLeastOnce).getQueryString
     verify(forwarder, times(1)).forward(new URL("http://otherhost:9999/test"), request, response)
   }
 
@@ -112,8 +112,8 @@ class LeaderProxyFilterTest extends MarathonSpec {
     // we pass that request down the chain
     verify(electionService, times(1)).isLeader
     verify(electionService, times(1)).leaderHostPort
-    verify(request, atLeastOnce()).getRequestURI
-    verify(request, atLeastOnce()).getQueryString
+    verify(request, atLeastOnce).getRequestURI
+    verify(request, atLeastOnce).getQueryString
     verify(forwarder, times(1)).forward(new URL("http://otherhost:9999/test?argument=blieh"), request, response)
   }
 
@@ -131,8 +131,8 @@ class LeaderProxyFilterTest extends MarathonSpec {
     // we pass that request down the chain
     verify(electionService, times(1)).isLeader
     verify(electionService, times(1)).leaderHostPort
-    verify(request, atLeastOnce()).getRequestURI
-    verify(request, atLeastOnce()).getQueryString
+    verify(request, atLeastOnce).getRequestURI
+    verify(request, atLeastOnce).getQueryString
     verify(forwarder, times(1)).forward(new URL("https://otherhost:9999/test"), request, response)
   }
 
@@ -151,8 +151,8 @@ class LeaderProxyFilterTest extends MarathonSpec {
     verify(electionService, times(4)).isLeader
     verify(electionService, times(4)).leaderHostPort
     verify(forwarder, times(1)).forward(new URL("http://otherhost:9999/test"), request, response)
-    verify(request, atLeastOnce()).getRequestURI
-    verify(request, atLeastOnce()).getQueryString
+    verify(request, atLeastOnce).getRequestURI
+    verify(request, atLeastOnce).getQueryString
   }
 
   test("successfully wait for consistent leadership info, then we are leader") {

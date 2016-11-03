@@ -1,4 +1,5 @@
-package mesosphere.marathon.metrics
+package mesosphere.marathon
+package metrics
 
 import java.util.concurrent.TimeUnit
 
@@ -10,17 +11,12 @@ import mesosphere.marathon.metrics.Metrics._
 import mesosphere.marathon.test.MarathonSpec
 import org.aopalliance.intercept.{ MethodInterceptor, MethodInvocation }
 import org.mockito.ArgumentCaptor
-import org.mockito.Matchers._
-import org.mockito.Mockito._
-import org.scalatest.mockito.MockitoSugar
 
 class FooBar {
   def dummy(): Unit = {}
 }
 
-class MetricsTest
-    extends MarathonSpec
-    with MockitoSugar {
+class MetricsTest extends MarathonSpec {
   private var metrics: Metrics = _
 
   class TestModule extends AbstractModule {
@@ -67,7 +63,7 @@ class MetricsTest
     metricsSpy.name("prefix", classOf[MetricsTest], "method1")
 
     verify(metricsSpy, times(1)).stripGuiceMarksFromClassName(classOf[FooBar])
-    verify(metricsSpy, times(2)).stripGuiceMarksFromClassName(any())
+    verify(metricsSpy, times(2)).stripGuiceMarksFromClassName(any)
   }
 
   test("Metrics#name should use a dot to separate the class name and the method name") {

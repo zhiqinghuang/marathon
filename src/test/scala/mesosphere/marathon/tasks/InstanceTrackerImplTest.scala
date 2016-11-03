@@ -18,8 +18,6 @@ import mesosphere.mesos.protos.Implicits._
 import mesosphere.mesos.protos.TextAttribute
 import org.apache.mesos.Protos
 import org.apache.mesos.Protos.{ TaskState, TaskStatus }
-import org.mockito.Matchers.any
-import org.mockito.Mockito.{ reset, spy, times, verify }
 import org.scalatest.{ GivenWhenThen, Matchers }
 
 import scala.collection.immutable.Seq
@@ -293,7 +291,7 @@ class InstanceTrackerImplTest extends MarathonSpec with MarathonActorSupport
 
     stateOpProcessor.process(update).futureValue
 
-    verify(state, times(0)).update(any())
+    verify(state, times(0)).update(any)
   }
 
   test("Should not store if state and health did not change") {
@@ -313,7 +311,7 @@ class InstanceTrackerImplTest extends MarathonSpec with MarathonActorSupport
 
     stateOpProcessor.process(update).futureValue
 
-    verify(state, times(0)).update(any())
+    verify(state, times(0)).update(any)
   }
 
   test("Should store if state changed") {
@@ -337,7 +335,7 @@ class InstanceTrackerImplTest extends MarathonSpec with MarathonActorSupport
 
     stateOpProcessor.process(newUpdate).futureValue
 
-    verify(state, times(1)).delete(any())
+    verify(state, times(1)).delete(any)
   }
 
   test("Should store if health changed") {
@@ -361,7 +359,7 @@ class InstanceTrackerImplTest extends MarathonSpec with MarathonActorSupport
 
     stateOpProcessor.process(newUpdate).futureValue
 
-    verify(state, times(1)).update(any())
+    verify(state, times(1)).update(any)
   }
 
   test("Should store if state and health changed") {
@@ -389,7 +387,7 @@ class InstanceTrackerImplTest extends MarathonSpec with MarathonActorSupport
 
     stateOpProcessor.process(newUpdate).futureValue
 
-    verify(state, times(1)).update(any())
+    verify(state, times(1)).update(any)
   }
 
   test("Should store if health changed (no health present at first)") {
@@ -415,7 +413,7 @@ class InstanceTrackerImplTest extends MarathonSpec with MarathonActorSupport
 
     stateOpProcessor.process(newUpdate).futureValue
 
-    verify(state, times(1)).update(any())
+    verify(state, times(1)).update(any)
   }
 
   test("Should store if state and health changed (no health present at first)") {
@@ -442,7 +440,7 @@ class InstanceTrackerImplTest extends MarathonSpec with MarathonActorSupport
 
     stateOpProcessor.process(newUpdate).futureValue
 
-    verify(state, times(1)).update(any())
+    verify(state, times(1)).update(any)
   }
 
   def makeSampleInstance(appId: PathId): Instance = {

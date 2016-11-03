@@ -11,17 +11,13 @@ import mesosphere.marathon.core.task.tracker.InstanceTracker
 import mesosphere.marathon.state.PathId._
 import mesosphere.marathon.state.{ AppDefinition, Timestamp }
 import mesosphere.marathon.storage.repository.AppRepository
-import mesosphere.marathon.test.{ MarathonActorSupport, MarathonSpec }
+import mesosphere.marathon.test.MarathonActorSupport
 import mesosphere.util.CallerThreadExecutionContext
 import org.apache.mesos.SchedulerDriver
-import org.mockito.Mockito.{ verify, verifyNoMoreInteractions, when }
-import org.scalatest.{ BeforeAndAfter, Matchers }
 
 import scala.concurrent.Future
 
-class HealthCheckActorTest
-    extends MarathonActorSupport
-    with MarathonSpec with Matchers with BeforeAndAfter {
+class HealthCheckActorTest extends MarathonActorSupport {
 
   override lazy implicit val system: ActorSystem =
     ActorSystem(
@@ -38,38 +34,38 @@ class HealthCheckActorTest
     val app = AppDefinition(id = appId)
     val appRepository: AppRepository = mock[AppRepository]
 
-    when(appRepository.getVersion(appId, appVersion.toOffsetDateTime)).thenReturn(Future.successful(Some(app)))
+    appRepository.getVersion(appId, appVersion.toOffsetDateTime) returns Future.successful(Some(app))
 
-    when(f.tracker.specInstancesSync(f.appId)).thenReturn(Seq(f.instance))
+    f.tracker.specInstancesSync(f.appId) returns Seq(f.instance)
 
     val actor = f.actorWithLatch(latch)
     actor.underlyingActor.dispatchJobs()
     latch.isOpen should be (false)
-    verifyNoMoreInteractions(f.driver)
+    noMoreInteractions(f.driver)
   }
 
   test("should not dispatch health checks for lost tasks") {
     val f = new Fixture
     val latch = TestLatch(1)
-    when(f.tracker.specInstancesSync(f.appId)).thenReturn(Seq(f.unreachableInstance))
+    f.tracker.specInstancesSync(f.appId) returns Seq(f.unreachableInstance)
 
     val actor = f.actorWithLatch(latch)
 
     actor.underlyingActor.dispatchJobs()
     latch.isOpen should be (false)
-    verifyNoMoreInteractions(f.driver)
+    noMoreInteractions(f.driver)
   }
 
   test("should not dispatch health checks for unreachable tasks") {
     val f = new Fixture
     val latch = TestLatch(1)
-    when(f.tracker.specInstancesSync(f.appId)).thenReturn(Seq(f.unreachableInstance))
+    f.tracker.specInstancesSync(f.appId) returns Seq(f.unreachableInstance)
 
     val actor = f.actorWithLatch(latch)
 
     actor.underlyingActor.dispatchJobs()
     latch.isOpen should be (false)
-    verifyNoMoreInteractions(f.driver)
+    noMoreInteractions(f.driver)
   }
 
   // regression test for #1456
@@ -79,7 +75,7 @@ class HealthCheckActorTest
 
     actor.underlyingActor.checkConsecutiveFailures(f.task, Health(f.task.taskId, consecutiveFailures = 3))
     verify(f.killService).killInstance(f.instance, KillReason.FailedHealthChecks)
-    verifyNoMoreInteractions(f.tracker, f.driver, f.scheduler)
+    noMoreInteractions(f.tracker, f.driver, f.scheduler)
   }
 
   test("task should not be killed if health check fails, but the task is unreachable") {
@@ -87,7 +83,7 @@ class HealthCheckActorTest
     val actor = f.actor(MarathonHttpHealthCheck(maxConsecutiveFailures = 3, portIndex = Some(PortReference(0))))
 
     actor.underlyingActor.checkConsecutiveFailures(f.unreachableTask, Health(f.unreachableTask.taskId, consecutiveFailures = 3))
-    verifyNoMoreInteractions(f.tracker, f.driver, f.scheduler)
+    noMoreInteractions(f.tracker, f.driver, f.scheduler)
   }
 
   class Fixture {
@@ -100,9 +96,9 @@ class HealthCheckActorTest
     val holder: MarathonSchedulerDriverHolder = new MarathonSchedulerDriverHolder
     val driver = mock[SchedulerDriver]
     holder.driver = Some(driver)
-    when(appRepository.getVersion(appId, appVersion.toOffsetDateTime)).thenReturn(Future.successful(Some(app)))
+    appRepository.getVersion(appId, appVersion.toOffsetDateTime) returns Future.successful(Some(app))
     val killService: KillService = mock[KillService]
-    when(appRepository.getVersion(appId, appVersion.toOffsetDateTime)).thenReturn(Future.successful(Some(app)))
+    appRepository.getVersion(appId, appVersion.toOffsetDateTime) returns Future.successful(Some(app))
 
     val scheduler: MarathonScheduler = mock[MarathonScheduler]
 

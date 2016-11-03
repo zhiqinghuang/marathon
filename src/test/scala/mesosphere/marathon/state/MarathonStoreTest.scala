@@ -7,15 +7,14 @@ import mesosphere.marathon.metrics.Metrics
 import mesosphere.marathon.state.PathId._
 import mesosphere.marathon.storage.repository.legacy.store.{ InMemoryStore, MarathonStore, PersistentEntity, PersistentStore }
 import mesosphere.marathon.test.MarathonSpec
-import org.mockito.Matchers._
 import org.mockito.Mockito._
-import org.scalatest.Matchers
 
 import scala.collection.immutable.Seq
 import scala.concurrent._
 import scala.concurrent.duration._
 
-class MarathonStoreTest extends MarathonSpec with Matchers {
+class MarathonStoreTest extends MarathonSpec {
+
   var metrics: Metrics = _
   var runSpecId = PathId("/test")
 
@@ -78,7 +77,7 @@ class MarathonStoreTest extends MarathonSpec with Matchers {
 
     when(newVariable.bytes).thenReturn(newAppDef.toProtoByteArray.toIndexedSeq)
     when(variable.bytes).thenReturn(appDef.toProtoByteArray.toIndexedSeq)
-    when(variable.withNewContent(any())).thenReturn(newVariable)
+    when(variable.withNewContent(any)).thenReturn(newVariable)
     when(state.load("app:testApp")).thenReturn(Future.successful(Some(variable)))
     when(state.update(newVariable)).thenReturn(Future.successful(newVariable))
 
@@ -102,7 +101,7 @@ class MarathonStoreTest extends MarathonSpec with Matchers {
 
     when(newVariable.bytes).thenReturn(newAppDef.toProtoByteArray.toIndexedSeq)
     when(variable.bytes).thenReturn(appDef.toProtoByteArray.toIndexedSeq)
-    when(variable.withNewContent(any())).thenReturn(newVariable)
+    when(variable.withNewContent(any)).thenReturn(newVariable)
     when(state.load("app:testApp")).thenReturn(Future.successful(Some(variable)))
     when(state.update(newVariable)).thenReturn(Future.failed(new StoreCommandFailedException("failed")))
 
