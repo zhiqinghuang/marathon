@@ -85,7 +85,9 @@ def teardown_module(module):
 
 def uninstall(service, package='marathon'):
     try:
+        cosmos = cosmospackage.Cosmos(get_cosmos_url())
         cosmos.uninstall_app(package, True, service)
         deployment_wait()
     except Exception as e:
+        print(e)
         pass
