@@ -127,7 +127,7 @@ def delete_all_apps_wait():
     deployment_wait()
 
 
-def deployment_wait(timeout=120):
+def deployment_wait(timeout=240):
     client = marathon.create_client()
     start = time.time()
     deployment_count = 1
@@ -197,7 +197,7 @@ def systemctl_master(command='restart'):
 
 
 
-def wait_for_service_url(service_name, timeout_sec=120):
+def wait_for_service_url(service_name, timeout_sec=240):
     """Checks the service url if available it returns true, on expiration
     it returns false"""
 
@@ -220,7 +220,7 @@ def wait_for_service_url(service_name, timeout_sec=120):
     return False
 
 
-def wait_for_service_url_removal(service_name, timeout_sec=120):
+def wait_for_service_url_removal(service_name, timeout_sec=240):
     """Checks the service url if it is removed it returns true, on expiration
     it returns false"""
 
@@ -250,7 +250,7 @@ def block_port(host, port, direction='INPUT'):
     run_command_on_agent(host, 'sudo iptables -I {} -p tcp --dport {} -j DROP'.format(direction, port))
 
 
-def wait_for_task(service, task, timeout_sec=120):
+def wait_for_task(service, task, timeout_sec=240):
     """Waits for a task which was launched to be launched"""
 
     now = time.time()
@@ -271,6 +271,6 @@ def wait_for_task(service, task, timeout_sec=120):
 
     return None
 
-def wait_for_task_health(service, task, timeout_sec=120):
+def wait_for_task_health(service, task, timeout_sec=240):
 
     task = wait_for_task(service, task, timeout_sec)
