@@ -49,22 +49,6 @@ def test_mom_with_master_process_failure():
         tasks[0]['id'] == original_task_id
 
 
-def test_mom_with_master_node_failure():
-    app_def = app('master-failure')
-    host = ip_other_than_mom()
-    pin_to_host(app_def, host)
-    with marathon_on_marathon():
-        client = marathon.create_client()
-        client.add_app(app_def)
-        deployment_wait()
-        tasks = client.get_tasks('/master-failure')
-        original_task_id = tasks[0]['id']
-        restart_master_node()
-        wait_for_task('marathon', 'marathon-user', 300)
-        tasks = client.get_tasks('/master-failure')
-        tasks[0]['id'] == original_task_id
-
-
 def test_mom_when_disconnected_from_zk():
     app_def = app('zk-failure')
     host = ip_other_than_mom()

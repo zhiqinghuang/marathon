@@ -215,10 +215,12 @@ def test_docker_dns_mapping():
         tasks = client.get_tasks(app_name)
         host = tasks[0]['host']
 
-        time.sleep(5)
+        # spinner with dns wait and timeout
+        time.sleep(10)
         bad_cmd = 'ping -c 1 docker-test.marathon-user.mesos-bad'
         cmd = 'ping -c 1 {}.marathon-user.mesos'.format(app_name)
         status, output = run_command_on_agent(host, bad_cmd)
+
         assert not status
 
         status, output = run_command_on_agent(host, cmd)
