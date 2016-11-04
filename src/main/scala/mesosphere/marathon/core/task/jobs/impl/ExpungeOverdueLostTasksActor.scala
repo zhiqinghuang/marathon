@@ -59,11 +59,6 @@ trait ExpungeOverdueLostTasksActorLogic {
   }
 
   /**
-    * @return true if created is timeout older than now.
-    */
-  def isExpired(created: Timestamp, now: Timestamp, timeout: FiniteDuration): Boolean = created.until(now) > timeout
-
-  /**
     * @return true if task has an unreachable status that is expired.
     */
   def isExpired(status: TaskStatus, now: Timestamp, timeout: FiniteDuration): Boolean = {

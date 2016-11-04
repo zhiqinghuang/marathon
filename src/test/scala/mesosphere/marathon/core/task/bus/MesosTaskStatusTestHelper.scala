@@ -4,6 +4,7 @@ package core.task.bus
 import java.util.UUID
 
 import mesosphere.marathon.state.Timestamp
+import mesosphere.marathon.core.condition.Condition
 import mesosphere.marathon.core.task.Task
 import org.apache.mesos.Protos.TaskStatus.Reason
 import org.apache.mesos.Protos.{ TaskState, TaskStatus, TimeInfo }
@@ -25,6 +26,14 @@ object MesosTaskStatusTestHelper {
     maybeReason.foreach(mesosStatus.setReason)
     maybeMessage.foreach(mesosStatus.setMessage)
     mesosStatus.build()
+  }
+
+  def mesosStatus(condition: Condition, taskId: Task.Id, since: Timestamp): TaskStatus = {
+    condition match {
+      case Condition.Unreachable => unreachable(taskId, since)
+      case Condition.Running => running(taskId)
+      case _ => unknown(taskId)
+    }
   }
 
   def running(taskId: Task.Id = Task.Id(UUID.randomUUID().toString)) = mesosStatus(state = TaskState.TASK_RUNNING, taskId = taskId)

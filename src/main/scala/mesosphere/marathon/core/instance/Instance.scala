@@ -2,6 +2,7 @@ package mesosphere.marathon
 package core.instance
 
 import java.util.Base64
+import java.util.concurrent.TimeUnit
 
 import com.fasterxml.uuid.{ EthernetAddress, Generators }
 import mesosphere.marathon.core.condition.Condition
@@ -14,13 +15,17 @@ import mesosphere.marathon.stream._
 import mesosphere.mesos.Placed
 import org.apache._
 import org.apache.mesos.Protos.Attribute
+import org.apache.mesos.Protos.TaskStatus
 import org.slf4j.{ Logger, LoggerFactory }
 import play.api.libs.json.{ Reads, Writes }
 
 import scala.annotation.tailrec
+import scala.concurrent.duration.FiniteDuration
 // TODO: Remove timestamp format
 import mesosphere.marathon.api.v2.json.Formats.TimestampFormat
 import play.api.libs.json.{ Format, JsResult, JsString, JsValue, Json }
+
+import scala.concurrent.duration._
 
 // TODO: remove MarathonState stuff once legacy persistence is gone
 case class Instance(
@@ -228,14 +233,14 @@ object Instance {
       *
       * @param maybeOldState The old state of the instance if any.
       * @param newTaskMap New tasks and their status that form the update instance.
-      * @param timestamp Timestamp of update.
+      * @param now Timestamp of update.
       * @return new InstanceState
       */
     @SuppressWarnings(Array("TraversableHead"))
     def apply(
       maybeOldState: Option[InstanceState],
       newTaskMap: Map[Task.Id, Task],
-      timestamp: Timestamp): InstanceState = {
+      now: Timestamp): InstanceState = {
 
       val tasks = newTaskMap.values
 
@@ -243,11 +248,16 @@ object Instance {
       val conditionMap = tasks.groupBy(_.status.condition)
       val condition = if (conditionMap.size == 1) {
         // all tasks have the same condition -> this is the instance condition
-        conditionMap.keys.head
+        val (con, allTasks) = conditionMap.head
+        // TODO: Bug, we just take the first task. However, another task might be older.
+        if(shouldBecomeInactive(con, allTasks.head, now)) Condition.UnreachableInactive
+        else con
       } else {
         // since we don't have a distinct state, we remove states where all tasks have to agree on
         // and search for a distinct state
         val distinctCondition = Instance.AllInstanceConditions.foldLeft(conditionMap) { (ds, status) => ds - status }
+
+        // TODO: Bug, check if we should return UnreachableInactive
         Instance.DistinctInstanceConditions.find(distinctCondition.contains).getOrElse {
           // if no distinct condition is found all tasks are in different AllInstanceConditions
           // we pick the first matching one
@@ -259,11 +269,13 @@ object Instance {
         }
       }
 
+//      if(shouldBecomeInactive(state, task, now)) condition = Condition.UnreachableInactive
+
       val healthy = computeHealth(tasks.toVector)
       maybeOldState match {
         case Some(state) if state.condition == condition && state.healthy == healthy => state
         case _ =>
-          InstanceState(condition, timestamp, activeSince(tasks), healthy)
+          InstanceState(condition, now, activeSince(tasks), healthy)
       }
     }
 
@@ -275,6 +287,29 @@ object Instance {
         case Nil => None
         case nonEmptySeq => Some(nonEmptySeq.min)
       }
+    }
+
+    /**
+      * @return true if task has an unreachable status that is expired.
+      */
+    def isExpired(status: TaskStatus, now: Timestamp, timeout: FiniteDuration): Boolean = {
+      val since: Timestamp =
+        if (status.hasUnreachableTime) status.getUnreachableTime
+        else Timestamp(TimeUnit.MICROSECONDS.toMillis(status.getTimestamp.toLong))
+
+      since.expired(now, by = timeout)
+    }
+
+    /**
+      * @return if task has been unreachable for too long and should be considered inactive.
+      */
+    def shouldBecomeInactive(condition: Condition, task: Task, now: Timestamp): Boolean = {
+      // Hard code timeout for now. Will change with MARATHON-1227
+      val timeUntilReplacement = 10.minutes
+
+      if (condition == Condition.Unreachable) {
+        task.mesosStatus.forall(status => isExpired(status, now, timeUntilReplacement))
+      } else false
     }
   }
 

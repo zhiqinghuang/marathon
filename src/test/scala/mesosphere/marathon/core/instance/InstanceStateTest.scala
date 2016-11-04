@@ -5,6 +5,7 @@ import mesosphere.UnitTest
 import mesosphere.marathon.core.base.ConstantClock
 import mesosphere.marathon.core.condition.Condition
 import mesosphere.marathon.core.task.Task
+import mesosphere.marathon.core.task.bus.MesosTaskStatusTestHelper
 import mesosphere.marathon.state.Timestamp
 import mesosphere.marathon.state.PathId._
 
@@ -63,6 +64,75 @@ class InstanceStateTest extends UnitTest {
       "set the instance condition to staging" in { state.condition should be(Condition.Staging) }
     }
 
+    "passed a running and an unreachable task" should {
+      val f = new Fixture
+
+      val startTimestamps = Seq(Some(f.clock.now - 1.hour), None)
+      val tasks: Map[Task.Id, Task] = f.tasks(Condition.Running, Condition.Unreachable)
+        .values
+        .zip(startTimestamps)
+        .map {
+          case (task, startTime) =>
+            val ephemeralTask = task.asInstanceOf[Task.LaunchedEphemeral]
+            val newStatus: Task.Status = ephemeralTask.status.copy(startedAt = startTime)
+            task.taskId -> ephemeralTask.copy(status = newStatus)
+        }(collection.breakOut)
+
+      val state = Instance.InstanceState(None, tasks, f.clock.now())
+
+      "set the activeSince timestamp to the one from running" in { state.activeSince should be(Some(f.clock.now - 1.hour)) }
+      "set the instance condition to unreachable" in { state.condition should be(Condition.Unreachable) }
+    }
+
+    "passed a running and an expired unreachable task" should {
+      val f = new Fixture
+
+      val startTimestamps = Seq(Some(f.clock.now - 1.hour), None)
+      val tasks: Map[Task.Id, Task] = f.tasks(Condition.Running, Condition.Unreachable)
+        .values
+        .zip(startTimestamps)
+        .map {
+          case (task, startTime) =>
+            val ephemeralTask = task.asInstanceOf[Task.LaunchedEphemeral]
+            val newStatus: Task.Status = ephemeralTask.status.copy(startedAt = startTime)
+            task.taskId -> ephemeralTask.copy(status = newStatus)
+        }(collection.breakOut)
+
+      val state = Instance.InstanceState(None, tasks, f.clock.now())
+
+      "set the activeSince timestamp to None" in { state.activeSince should not be('defined) }
+      "set the instance condition to UnreachableInactive" in { state.condition should be(Condition.UnreachableInactive) }
+    }
+  }
+
+  "InstanceState shouldBecomeInactive" when {
+    "passed an expired unreachable task" should {
+      val f = new Fixture
+
+      val since = f.clock.now() - 11.minutes
+      val condition = Condition.Unreachable
+      val taskId = Task.Id.forRunSpec(f.id)
+      val mesosStatus = MesosTaskStatusTestHelper.unreachable(taskId, since)
+      val task = TestTaskBuilder.Helper.minimalTask(taskId, Timestamp.now(), Some(mesosStatus), condition)
+
+      val result = Instance.InstanceState.shouldBecomeInactive(condition, task, f.clock.now)
+
+      "return true" in { result should be(true) }
+    }
+
+    "passed a not expired unreachable task" should {
+      val f = new Fixture
+
+      val since = f.clock.now() - 9.minutes
+      val condition = Condition.Unreachable
+      val taskId = Task.Id.forRunSpec(f.id)
+      val mesosStatus = MesosTaskStatusTestHelper.unreachable(taskId, since)
+      val task = TestTaskBuilder.Helper.minimalTask(taskId, Timestamp.now(), Some(mesosStatus), condition)
+
+      val result = Instance.InstanceState.shouldBecomeInactive(condition, task, f.clock.now)
+
+      "return true" in { result should be(false) }
+    }
   }
 
   class Fixture {
@@ -75,7 +145,9 @@ class InstanceStateTest extends UnitTest {
 
     def tasks(statuses: Seq[Condition]): Map[Task.Id, Task] =
       statuses.map { status =>
-        val task = TestTaskBuilder.Helper.minimalTask(Task.Id.forRunSpec(id), Timestamp.now(), None, status)
+        val taskId = Task.Id.forRunSpec(id)
+        val mesosStatus = MesosTaskStatusTestHelper.mesosStatus(status, taskId, Timestamp.zero)
+        val task = TestTaskBuilder.Helper.minimalTask(taskId, Timestamp.now(), Some(mesosStatus), status)
         task.taskId -> task
       }(collection.breakOut)
   }
